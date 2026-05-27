@@ -1,3 +1,4 @@
+import DashboardSidebar from "@/app/components/DashboardSidebar";
 export default function RealEstateStagingDashboard() {
   const projects = [
     {
@@ -54,47 +55,7 @@ export default function RealEstateStagingDashboard() {
 
       <div className="mx-auto grid max-w-7xl grid-cols-12 gap-8 px-8 py-8">
         {/* SIDEBAR */}
-        <aside className="col-span-2 rounded-3xl bg-[#233124] p-6 text-white shadow-xl">
-          <div className="space-y-3">
-            <div className="rounded-2xl bg-[#324634] px-4 py-3 font-medium">
-              Tableau de bord
-            </div>
-
-            <div className="rounded-2xl px-4 py-3 opacity-80 hover:bg-[#324634] hover:opacity-100">
-              Mes projets
-            </div>
-
-            <div className="rounded-2xl px-4 py-3 opacity-80 hover:bg-[#324634] hover:opacity-100">
-              Avant / Après
-            </div>
-
-            <div className="rounded-2xl px-4 py-3 opacity-80 hover:bg-[#324634] hover:opacity-100">
-              Retouches
-            </div>
-
-            <div className="rounded-2xl px-4 py-3 opacity-80 hover:bg-[#324634] hover:opacity-100">
-              Facturation
-            </div>
-
-            <div className="rounded-2xl px-4 py-3 opacity-80 hover:bg-[#324634] hover:opacity-100">
-              Support
-            </div>
-          </div>
-
-          <div className="mt-10 rounded-2xl border border-[#4e684f] bg-[#2c3c2d] p-4">
-            <p className="text-xs uppercase tracking-wide text-[#c7b28b]">
-              Offre actuelle
-            </p>
-            <p className="mt-2 text-xl font-semibold">PRO Business</p>
-            <p className="mt-1 text-sm opacity-80">
-              30 photos incluses / mois
-            </p>
-
-            <button className="mt-5 w-full rounded-xl bg-[#b88a44] px-4 py-3 text-sm font-medium text-white transition hover:opacity-90">
-              Gérer mon abonnement
-            </button>
-          </div>
-        </aside>
+        <DashboardSidebar />
 
         {/* MAIN */}
         <main className="col-span-10 space-y-8">
