@@ -1,32 +1,29 @@
 import DashboardSidebar from "@/app/components/DashboardSidebar";
-
+import Link from "next/link";
 const projects = [
   {
     id: 1,
     title: "Appartement Haussmannien",
     city: "Paris 16",
     status: "Livré",
-    style: "Contemporain Luxe",
     photos: 12,
-    credits: 8,
+    updated: "Aujourd’hui",
   },
   {
     id: 2,
-    title: "Villa Moderne",
+    title: "Villa Contemporaine",
     city: "Cannes",
     status: "En cours",
-    style: "Minimaliste Premium",
     photos: 8,
-    credits: 14,
+    updated: "Hier",
   },
   {
     id: 3,
-    title: "Loft Industriel",
+    title: "Loft Urbain",
     city: "Lyon",
     status: "Retouche demandée",
-    style: "Élégance Urbaine",
     photos: 5,
-    credits: 6,
+    updated: "Il y a 2 jours",
   },
 ];
 
@@ -34,7 +31,7 @@ export default function ProjectsPage() {
   return (
     <div className="min-h-screen bg-[#f7f4ef] text-[#1f1f1f]">
       <div className="mx-auto grid max-w-7xl grid-cols-12 gap-8 px-8 py-8">
-        
+
         {/* SIDEBAR */}
         <DashboardSidebar />
 
@@ -49,7 +46,7 @@ export default function ProjectsPage() {
               </h1>
 
               <p className="mt-2 text-gray-500">
-                Gérez vos projets de home staging et vos projections immobilières premium.
+                Retrouvez l’ensemble de vos projections immobilières et suivis de projets.
               </p>
             </div>
 
@@ -105,50 +102,46 @@ export default function ProjectsPage() {
                 </div>
 
                 {/* CONTENT */}
-                <div className="space-y-5 p-6">
+                <div className="space-y-6 p-6">
 
-                  <div className="flex items-center justify-between">
-                    <div>
+                  <div className="grid grid-cols-2 gap-4">
+
+                    <div className="rounded-2xl bg-[#faf6ef] p-4">
                       <p className="text-sm text-gray-500">
-                        Style IA
+                        Photos transmises
                       </p>
 
-                      <p className="mt-1 font-medium">
-                        {project.style}
-                      </p>
-                    </div>
-
-                    <div className="text-right">
-                      <p className="text-sm text-gray-500">
-                        Photos
-                      </p>
-
-                      <p className="mt-1 font-semibold">
+                      <p className="mt-2 text-2xl font-semibold">
                         {project.photos}
                       </p>
                     </div>
+
+                    <div className="rounded-2xl bg-[#faf6ef] p-4">
+                      <p className="text-sm text-gray-500">
+                        Dernière mise à jour
+                      </p>
+
+                      <p className="mt-2 text-lg font-medium">
+                        {project.updated}
+                      </p>
+                    </div>
+
                   </div>
 
-                  <div className="rounded-2xl bg-[#faf6ef] p-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-500">
-                        Crédits restants
-                      </span>
-
-                      <span className="font-medium">
-                        {project.credits}
-                      </span>
-                    </div>
-
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#e8dfd2]">
-                      <div className="h-full w-2/3 rounded-full bg-[#b88a44]" />
-                    </div>
+                  <div className="rounded-2xl border border-[#efe6d8] bg-[#fcfaf7] p-5">
+                    <p className="text-sm leading-relaxed text-gray-600">
+                      Projection immobilière réalisée selon la signature visuelle
+                      Evidence, avec une mise en valeur réaliste et cohérente du bien.
+                    </p>
                   </div>
 
                   <div className="flex gap-3">
-                    <button className="flex-1 rounded-2xl border border-[#d8c5a2] px-4 py-3 text-sm font-medium">
-                      Voir projet
-                    </button>
+                    <Link
+  href={`/projects/${project.id}`}
+  className="flex-1 rounded-2xl border border-[#d8c5a2] px-4 py-3 text-center text-sm font-medium"
+>
+  Voir projet
+</Link>
 
                     <button className="flex-1 rounded-2xl bg-[#233124] px-4 py-3 text-sm font-medium text-white">
                       Télécharger
@@ -160,6 +153,7 @@ export default function ProjectsPage() {
             ))}
 
           </section>
+
         </main>
       </div>
     </div>
