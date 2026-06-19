@@ -7,7 +7,7 @@ const API_URL = "https://poetic-youthfulness-production-fecb.up.railway.app";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [step, setStep] = useState<"email" | "code">("email");
+  const [step, setStep] = useState("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,7 +21,7 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/pro/auth/send-code`, {
+      const res = await fetch(API_URL + "/api/pro/auth/send-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
@@ -34,7 +34,7 @@ export default function LoginPage() {
       }
       setStep("code");
     } catch (err) {
-      setError("Erreur réseau. Veuillez réessayer.");
+      setError("Erreur reseau. Veuillez reessayer.");
     }
     setLoading(false);
   };
@@ -42,12 +42,12 @@ export default function LoginPage() {
   const handleVerifyCode = async () => {
     setError("");
     if (!code.trim()) {
-      setError("Veuillez entrer le code reçu.");
+      setError("Veuillez entrer le code recu.");
       return;
     }
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/pro/auth/verify-code`, {
+      const res = await fetch(API_URL + "/api/pro/auth/verify-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), code: code.trim() }),
@@ -58,12 +58,11 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
-      // Stocker le token (30 jours)
       localStorage.setItem("evidence_pro_token", data.token);
       localStorage.setItem("evidence_pro_email", email.trim());
       router.push("/dashboard");
     } catch (err) {
-      setError("Erreur réseau. Veuillez réessayer.");
+      setError("Erreur reseau. Veuillez reessayer.");
     }
     setLoading(false);
   };
@@ -92,7 +91,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="contact@agence.fr"
                 className="w-full rounded-2xl border border-[#e8dfd2] px-4 py-3 text-sm focus:outline-none focus:border-[#b88a44]"
-                onKeyDown={(e) => e.key === "Enter" && handleSendCode()}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSendCode(); }}
               />
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
@@ -109,4 +108,39 @@ export default function LoginPage() {
         {step === "code" && (
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
-              Un code à 6 chiffres a été envoyé à <strong>{email}</strong>
+              Un code a 6 chiffres a ete envoye a votre adresse email.
+            </p>
+            <div>
+              <label className="block text-sm text-gray-600 mb-2">
+                Code de connexion
+              </label>
+              <input
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="123456"
+                maxLength={6}
+                className="w-full rounded-2xl border border-[#e8dfd2] px-4 py-3 text-center text-2xl tracking-widest focus:outline-none focus:border-[#b88a44]"
+                onKeyDown={(e) => { if (e.key === "Enter") handleVerifyCode(); }}
+              />
+            </div>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <button
+              onClick={handleVerifyCode}
+              disabled={loading}
+              className="w-full rounded-2xl bg-[#233124] px-6 py-3 text-sm font-medium text-white shadow-md transition hover:opacity-90 disabled:opacity-50"
+            >
+              {loading ? "Verification..." : "Se connecter"}
+            </button>
+            <button
+              onClick={() => setStep("email")}
+              className="w-full text-sm text-gray-500 hover:text-gray-700"
+            >
+              Changer d'email
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
