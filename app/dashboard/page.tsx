@@ -81,8 +81,7 @@ export default function RealEstateStagingDashboard() {
         </header>
 
         <div className="mx-auto grid max-w-7xl grid-cols-12 gap-8 px-8 py-8">
-          <DashboardSidebar account={account} />
-
+        <DashboardSidebar />
           <main className="col-span-10 space-y-8">
             <section className="rounded-[36px] bg-white p-8 shadow-sm">
               <p className="text-sm uppercase tracking-wide text-[#8c6b34]">
