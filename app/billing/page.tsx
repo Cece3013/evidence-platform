@@ -130,7 +130,7 @@ export default function BillingPage() {
                       </p>
                     </div>
 
-                    {inv.pdfUrl && (
+                    {inv.pdfUrl && (<a
                       
                         href={inv.pdfUrl}
                         target="_blank"
