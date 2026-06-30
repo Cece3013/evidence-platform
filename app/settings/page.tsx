@@ -1,146 +1,204 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import DashboardSidebar from "@/app/components/DashboardSidebar";
+import ProtectedRoute from "@/app/components/ProtectedRoute";
 
 const API_URL = "https://poetic-youthfulness-production-fecb.up.railway.app";
 
-export default function LoginPage() {
+export default function SettingsPage() {
   const router = useRouter();
-  const [step, setStep] = useState("email");
-  const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [account, setAccount] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
 
-  const handleSendCode = async () => {
-    setError("");
-    if (!email.trim()) {
-      setError("Veuillez entrer votre email.");
+  const [companyName, setCompanyName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [siret, setSiret] = useState("");
+
+  useEffect(() => {
+    fetchAccount();
+  }, []);
+
+  const fetchAccount = async () => {
+    const token = localStorage.getItem("evidence_pro_token");
+    if (!token) {
+      router.push("/login");
       return;
     }
-    setLoading(true);
     try {
-      const res = await fetch(API_URL + "/api/pro/auth/send-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+      const res = await fetch(API_URL + "/api/pro/auth/me", {
+        headers: { Authorization: "Bearer " + token },
       });
-      const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Erreur lors de l'envoi du code.");
-        setLoading(false);
+        localStorage.removeItem("evidence_pro_token");
+        router.push("/login");
         return;
       }
-      setStep("code");
+      const data = await res.json();
+      setAccount(data);
+      setCompanyName(data.companyName || "");
+      setPhone(data.phone || "");
+      setAddress(data.address || "");
+      setSiret(data.siret || "");
     } catch (err) {
-      setError("Erreur reseau. Veuillez reessayer.");
+      console.error(err);
     }
     setLoading(false);
   };
 
-  const handleVerifyCode = async () => {
-    setError("");
-    if (!code.trim()) {
-      setError("Veuillez entrer le code recu.");
-      return;
-    }
-    setLoading(true);
+  const handleSave = async () => {
+    setMessage("");
+    setSaving(true);
+    const token = localStorage.getItem("evidence_pro_token");
+
     try {
-      const res = await fetch(API_URL + "/api/pro/auth/verify-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), code: code.trim() }),
+      const res = await fetch(API_URL + "/api/pro/auth/update", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
+        },
+        body: JSON.stringify({ companyName, phone, address, siret }),
       });
+
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Code invalide.");
-        setLoading(false);
+        setMessage(data.error || "Erreur lors de la mise à jour.");
+        setSaving(false);
         return;
       }
-      localStorage.setItem("evidence_pro_token", data.token);
-      localStorage.setItem("evidence_pro_email", email.trim());
-      router.push("/dashboard");
+
+      setMessage("Vos informations ont été mises à jour avec succès.");
     } catch (err) {
-      setError("Erreur reseau. Veuillez reessayer.");
+      setMessage("Erreur réseau.");
     }
-    setLoading(false);
+    setSaving(false);
   };
+
+  const handleLogout = () => {
+    localStorage.removeItem("evidence_pro_token");
+    localStorage.removeItem("evidence_pro_email");
+    router.push("/login");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f7f4ef]">
+        <p className="text-gray-500">Chargement...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f7f4ef] px-6">
-      <div className="w-full max-w-md rounded-[32px] bg-white p-10 shadow-sm">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-semibold text-[#1f1f1f]">
-            Evidence Home Staging
-          </h1>
-          <p className="mt-2 text-sm text-gray-500">
-            Espace professionnel
-          </p>
+    <ProtectedRoute>
+      <div className="min-h-screen bg-[#f7f4ef] text-[#1f1f1f]">
+        <div className="mx-auto grid max-w-7xl grid-cols-12 gap-8 px-8 py-8">
+
+          <DashboardSidebar />
+
+          <main className="col-span-10 space-y-8">
+
+            <section>
+              <h1 className="text-4xl font-semibold tracking-tight">
+                Paramètres
+              </h1>
+              <p className="mt-2 text-gray-500">
+                Gérez les informations de votre entreprise.
+              </p>
+            </section>
+
+            <section className="rounded-[36px] bg-white p-8 shadow-sm max-w-2xl">
+
+              <h2 className="text-xl font-semibold mb-6">
+                Informations de l'entreprise
+              </h2>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-2">Nom de l'entreprise</label>
+                  <input
+                    type="text"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    className="w-full rounded-2xl border border-[#e8dfd2] px-4 py-3 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-600 mb-2">SIRET</label>
+                  <input
+                    type="text"
+                    value={siret}
+                    onChange={(e) => setSiret(e.target.value)}
+                    className="w-full rounded-2xl border border-[#e8dfd2] px-4 py-3 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-600 mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={account?.email || ""}
+                    disabled
+                    className="w-full rounded-2xl border border-[#e8dfd2] bg-[#f7f4ef] px-4 py-3 text-sm text-gray-500"
+                  />
+                  <p className="mt-1 text-xs text-gray-400">L'email ne peut pas être modifié.</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-600 mb-2">Téléphone</label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full rounded-2xl border border-[#e8dfd2] px-4 py-3 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-600 mb-2">Adresse</label>
+                  <textarea
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    className="w-full rounded-2xl border border-[#e8dfd2] px-4 py-3 text-sm"
+                    rows={3}
+                  />
+                </div>
+
+                {message && (
+                  <p className="text-sm text-[#8c6b34]">{message}</p>
+                )}
+
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="rounded-2xl bg-[#b88a44] px-6 py-3 text-sm font-medium text-white shadow-md transition hover:opacity-90 disabled:opacity-50"
+                >
+                  {saving ? "Enregistrement..." : "Enregistrer les modifications"}
+                </button>
+              </div>
+
+            </section>
+
+            <section className="rounded-[36px] bg-white p-8 shadow-sm max-w-2xl">
+              <h2 className="text-xl font-semibold mb-4">
+                Session
+              </h2>
+              <button
+                onClick={handleLogout}
+                className="rounded-2xl border border-[#d8c5a2] px-6 py-3 text-sm font-medium text-gray-600 hover:bg-[#faf6ef]"
+              >
+                Se déconnecter
+              </button>
+            </section>
+
+          </main>
         </div>
-
-        {step === "email" && (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm text-gray-600 mb-2">
-                Email professionnel
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="contact@agence.fr"
-                className="w-full rounded-2xl border border-[#e8dfd2] px-4 py-3 text-sm focus:outline-none focus:border-[#b88a44]"
-                onKeyDown={(e) => { if (e.key === "Enter") handleSendCode(); }}
-              />
-            </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <button
-              onClick={handleSendCode}
-              disabled={loading}
-              className="w-full rounded-2xl bg-[#b88a44] px-6 py-3 text-sm font-medium text-white shadow-md transition hover:opacity-90 disabled:opacity-50"
-            >
-              {loading ? "Envoi en cours..." : "Recevoir mon code"}
-            </button>
-          </div>
-        )}
-
-        {step === "code" && (
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600">
-              Un code a 6 chiffres a ete envoye a votre adresse email.
-            </p>
-            <div>
-              <label className="block text-sm text-gray-600 mb-2">
-                Code de connexion
-              </label>
-              <input
-                type="text"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="123456"
-                maxLength={6}
-                className="w-full rounded-2xl border border-[#e8dfd2] px-4 py-3 text-center text-2xl tracking-widest focus:outline-none focus:border-[#b88a44]"
-                onKeyDown={(e) => { if (e.key === "Enter") handleVerifyCode(); }}
-              />
-            </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <button
-              onClick={handleVerifyCode}
-              disabled={loading}
-              className="w-full rounded-2xl bg-[#233124] px-6 py-3 text-sm font-medium text-white shadow-md transition hover:opacity-90 disabled:opacity-50"
-            >
-              {loading ? "Verification..." : "Se connecter"}
-            </button>
-            <button
-              onClick={() => setStep("email")}
-              className="w-full text-sm text-gray-500 hover:text-gray-700"
-            >
-              Changer d'email
-            </button>
-          </div>
-        )}
       </div>
-    </div>
+    </ProtectedRoute>
   );
 }
