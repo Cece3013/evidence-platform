@@ -83,7 +83,7 @@ export default function BillingPage() {
               </p>
             </section>
 
-            <section className="rounded-[36px] bg-white p-8 shadow-sm">
+           <section className="rounded-[36px] bg-white p-8 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm uppercase tracking-wide text-[#8c6b34]">
@@ -98,6 +98,13 @@ export default function BillingPage() {
                     Statut : {account?.status || "—"}
                   </p>
                 </div>
+
+                
+                  href="mailto:contact@evidence-homestaging.fr?subject=Modification de mon abonnement"
+                  className="rounded-2xl bg-[#b88a44] px-6 py-4 text-sm font-medium text-white shadow-md transition hover:opacity-90"
+                >
+                  Modifier mon abonnement
+                </a>
               </div>
             </section>
 
