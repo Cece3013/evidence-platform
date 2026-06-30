@@ -26,6 +26,12 @@ export default function DashboardSidebar() {
         </Link>
 
         <Link
+          href="/settings"
+          className="block rounded-2xl px-4 py-3 opacity-80 transition hover:bg-[#324634] hover:opacity-100"
+        >
+          Paramètres
+        </Link>
+        <Link
           href="/support"
           className="block rounded-2xl px-4 py-3 opacity-80 transition hover:bg-[#324634] hover:opacity-100"
         >
