@@ -100,7 +100,7 @@ export default function BillingPage() {
                 </div>
 
                 
-                  href="mailto:contact@evidence-homestaging.fr?subject=Modification de mon abonnement"
+                 href={"mailto:contact@evidence-homestaging.fr?subject=Modification abonnement"}
                   className="rounded-2xl bg-[#b88a44] px-6 py-4 text-sm font-medium text-white shadow-md transition hover:opacity-90"
                 >
                   Modifier mon abonnement
