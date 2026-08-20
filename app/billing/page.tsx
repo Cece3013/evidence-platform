@@ -7,11 +7,20 @@ import ProtectedRoute from "@/app/components/ProtectedRoute";
 
 const API_URL = "https://poetic-youthfulness-production-fecb.up.railway.app";
 
+const OFFERS = [
+  { id: "pro_starter", label: "PRO Starter — 49€/mois" },
+  { id: "pro_business", label: "PRO Business — 99€/mois" },
+  { id: "pro_agency", label: "PRO Agency — 199€/mois" },
+];
+
 export default function BillingPage() {
   const router = useRouter();
   const [account, setAccount] = useState<any>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedOffer, setSelectedOffer] = useState("");
+  const [changing, setChanging] = useState(false);
+  const [changeMessage, setChangeMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -41,6 +50,7 @@ export default function BillingPage() {
 
       const accountData = await accountRes.json();
       setAccount(accountData);
+      setSelectedOffer(accountData.offerId || "");
 
       if (invoicesRes.ok) {
         const invoicesData = await invoicesRes.json();
@@ -50,6 +60,39 @@ export default function BillingPage() {
       console.error(err);
     }
     setLoading(false);
+  };
+
+  const handleChangePlan = async () => {
+    const token = localStorage.getItem("evidence_pro_token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+    setChanging(true);
+    setChangeMessage(null);
+    try {
+      const res = await fetch(API_URL + "/api/pro/auth/change-plan", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ newOfferId: selectedOffer }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setChangeMessage({ type: "error", text: data.error || "Erreur lors du changement d'offre." });
+      } else {
+        setChangeMessage({ type: "success", text: "Votre abonnement a bien été mis à jour !" });
+        await fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+      setChangeMessage({ type: "error", text: "Erreur réseau. Veuillez réessayer." });
+    }
+    setChanging(false);
   };
 
   if (loading) {
@@ -98,13 +141,52 @@ export default function BillingPage() {
                     Statut : {account?.status || "—"}
                   </p>
                 </div>
+              </div>
 
-                <a
-                  href={"mailto:contact@evidence-homestaging.fr?subject=Modification abonnement"}
-                  className="rounded-2xl bg-[#b88a44] px-6 py-4 text-sm font-medium text-white shadow-md transition hover:opacity-90"
-                >
-                  Modifier mon abonnement
-                </a>
+              <div className="mt-8 border-t border-[#efe6d8] pt-6">
+                <p className="text-sm uppercase tracking-wide text-[#8c6b34]">
+                  Changer d'offre
+                </p>
+
+                <div className="mt-3 flex flex-wrap items-center gap-4">
+                  <select
+                    value={selectedOffer}
+                    onChange={(e) => {
+                      setSelectedOffer(e.target.value);
+                      setChangeMessage(null);
+                    }}
+                    className="rounded-2xl border border-[#d8c5a2] bg-white px-4 py-3 text-sm"
+                  >
+                    {OFFERS.map((offer) => (
+                      <option key={offer.id} value={offer.id}>
+                        {offer.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    onClick={handleChangePlan}
+                    disabled={changing || selectedOffer === account?.offerId}
+                    className="rounded-2xl bg-[#b88a44] px-6 py-3 text-sm font-medium text-white shadow-md transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {changing ? "Mise à jour..." : "Confirmer le changement"}
+                  </button>
+                </div>
+
+                {changeMessage && (
+                  <p
+                    className={
+                      "mt-4 text-sm " +
+                      (changeMessage.type === "success" ? "text-green-700" : "text-red-600")
+                    }
+                  >
+                    {changeMessage.text}
+                  </p>
+                )}
+
+                <p className="mt-4 text-xs text-gray-400">
+                  Le changement est appliqué immédiatement, avec un ajustement au prorata sur votre prochaine facture.
+                </p>
               </div>
             </section>
 
