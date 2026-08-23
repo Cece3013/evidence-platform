@@ -13,6 +13,14 @@ const OFFERS = [
   { id: "pro_agency", label: "PRO Agency — 199€/mois" },
 ];
 
+function formatDate(unixSeconds: number) {
+  return new Date(unixSeconds * 1000).toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export default function BillingPage() {
   const router = useRouter();
   const [account, setAccount] = useState<any>(null);
@@ -21,6 +29,9 @@ export default function BillingPage() {
   const [selectedOffer, setSelectedOffer] = useState("");
   const [changing, setChanging] = useState(false);
   const [changeMessage, setChangeMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelMessage, setCancelMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -95,6 +106,61 @@ export default function BillingPage() {
     setChanging(false);
   };
 
+  const handleCancel = async () => {
+    const token = localStorage.getItem("evidence_pro_token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+    setCancelling(true);
+    setCancelMessage(null);
+    try {
+      const res = await fetch(API_URL + "/api/pro/auth/cancel-subscription", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token },
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setCancelMessage({ type: "error", text: data.error || "Erreur lors de la résiliation." });
+      } else {
+        setConfirmingCancel(false);
+        await fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+      setCancelMessage({ type: "error", text: "Erreur réseau. Veuillez réessayer." });
+    }
+    setCancelling(false);
+  };
+
+  const handleReactivate = async () => {
+    const token = localStorage.getItem("evidence_pro_token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+    setCancelling(true);
+    setCancelMessage(null);
+    try {
+      const res = await fetch(API_URL + "/api/pro/auth/reactivate-subscription", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token },
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setCancelMessage({ type: "error", text: data.error || "Erreur lors de la réactivation." });
+      } else {
+        await fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+      setCancelMessage({ type: "error", text: "Erreur réseau. Veuillez réessayer." });
+    }
+    setCancelling(false);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f7f4ef]">
@@ -125,6 +191,21 @@ export default function BillingPage() {
                 Consultez votre offre et vos factures.
               </p>
             </section>
+
+            {account?.cancelAtPeriodEnd && account?.periodEnd && (
+              <section className="rounded-[36px] bg-amber-50 border border-amber-200 p-6">
+                <p className="text-sm font-medium text-amber-800">
+                  Votre abonnement sera résilié le {formatDate(account.periodEnd)}. Vous conservez l'accès PRO jusqu'à cette date.
+                </p>
+                <button
+                  onClick={handleReactivate}
+                  disabled={cancelling}
+                  className="mt-3 rounded-2xl bg-white border border-amber-300 px-5 py-2 text-sm font-medium text-amber-800 transition hover:bg-amber-100 disabled:opacity-50"
+                >
+                  {cancelling ? "..." : "Annuler la résiliation"}
+                </button>
+              </section>
+            )}
 
            <section className="rounded-[36px] bg-white p-8 shadow-sm">
               <div className="flex items-center justify-between">
@@ -188,6 +269,56 @@ export default function BillingPage() {
                   Le changement est appliqué immédiatement, avec un ajustement au prorata sur votre prochaine facture.
                 </p>
               </div>
+
+              {!account?.cancelAtPeriodEnd && (
+                <div className="mt-8 border-t border-[#efe6d8] pt-6">
+                  <p className="text-sm uppercase tracking-wide text-[#8c6b34]">
+                    Résilier mon abonnement
+                  </p>
+
+                  {!confirmingCancel ? (
+                    <button
+                      onClick={() => setConfirmingCancel(true)}
+                      className="mt-3 rounded-2xl border border-red-200 px-6 py-3 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                    >
+                      Résilier mon abonnement
+                    </button>
+                  ) : (
+                    <div className="mt-3">
+                      <p className="text-sm text-gray-600">
+                        Vous conserverez l'accès PRO jusqu'à la fin de la période déjà payée. Confirmez-vous la résiliation ?
+                      </p>
+                      <div className="mt-3 flex gap-3">
+                        <button
+                          onClick={handleCancel}
+                          disabled={cancelling}
+                          className="rounded-2xl bg-red-600 px-6 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+                        >
+                          {cancelling ? "Résiliation..." : "Oui, résilier"}
+                        </button>
+                        <button
+                          onClick={() => setConfirmingCancel(false)}
+                          disabled={cancelling}
+                          className="rounded-2xl border border-[#d8c5a2] px-6 py-3 text-sm font-medium"
+                        >
+                          Annuler
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {cancelMessage && (
+                    <p
+                      className={
+                        "mt-4 text-sm " +
+                        (cancelMessage.type === "success" ? "text-green-700" : "text-red-600")
+                      }
+                    >
+                      {cancelMessage.text}
+                    </p>
+                  )}
+                </div>
+              )}
             </section>
 
             <section className="rounded-[36px] bg-white p-8 shadow-sm">
