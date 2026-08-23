@@ -160,7 +160,28 @@ export default function BillingPage() {
     }
     setCancelling(false);
   };
-
+  const handleManagePayment = async () => {
+    const token = localStorage.getItem("evidence_pro_token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+    try {
+      const res = await fetch(API_URL + "/api/pro/auth/billing-portal", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token },
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        setCancelMessage({ type: "error", text: data.error || "Impossible d'ouvrir le portail de paiement." });
+      }
+    } catch (err) {
+      console.error(err);
+      setCancelMessage({ type: "error", text: "Erreur réseau. Veuillez réessayer." });
+    }
+  };
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f7f4ef]">
@@ -218,10 +239,17 @@ export default function BillingPage() {
                     {account?.offerName || "—"}
                   </h2>
 
-                  <p className="mt-2 text-gray-500">
+                                   <p className="mt-2 text-gray-500">
                     Statut : {account?.status || "—"}
                   </p>
                 </div>
+
+                <button
+                  onClick={handleManagePayment}
+                  className="rounded-2xl border border-[#d8c5a2] px-5 py-3 text-sm font-medium transition hover:bg-[#f7f4ef]"
+                >
+                  Gérer mon moyen de paiement
+                </button>
               </div>
 
               <div className="mt-8 border-t border-[#efe6d8] pt-6">
