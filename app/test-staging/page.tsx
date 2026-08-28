@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -23,12 +22,48 @@ export default function TestStagingPage() {
   const [imageUrl, setImageUrl] = useState("");
   const [roomType, setRoomType] = useState("salon");
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!testKey.trim()) {
+      setError("Renseignez d'abord la clé de test.");
+      return;
+    }
+
+    setUploading(true);
+    setError("");
+    setResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("photo", file);
+      formData.append("testKey", testKey);
+
+      const res = await fetch(API_URL + "/api/test-staging/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Erreur lors de l'envoi de la photo.");
+      } else {
+        setImageUrl(data.url);
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Erreur réseau pendant l'envoi.");
+    }
+    setUploading(false);
+  };
+
   const handleGenerate = async () => {
     if (!imageUrl.trim()) {
-      setError("Collez d'abord l'URL d'une photo.");
+      setError("Choisissez d'abord une photo.");
       return;
     }
     setLoading(true);
@@ -76,17 +111,18 @@ export default function TestStagingPage() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700">URL de la photo</label>
+            <label className="text-sm font-medium text-gray-700">Photo</label>
             <input
-              type="text"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://res.cloudinary.com/..."
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              disabled={uploading}
               className="mt-2 w-full rounded-2xl border border-[#d8c5a2] px-4 py-3 text-sm"
             />
-            <p className="mt-2 text-xs text-gray-400">
-              Uploadez d'abord la photo sur Cloudinary (ou tout hébergeur d'images public) et collez son lien direct ici.
-            </p>
+            {uploading && <p className="mt-2 text-xs text-[#8c6b34]">Envoi en cours...</p>}
+            {imageUrl && !uploading && (
+              <p className="mt-2 text-xs text-green-700 break-all">Photo prête</p>
+            )}
           </div>
 
           <div>
@@ -106,7 +142,7 @@ export default function TestStagingPage() {
 
           <button
             onClick={handleGenerate}
-            disabled={loading}
+            disabled={loading || uploading}
             className="rounded-2xl bg-[#b88a44] px-6 py-4 text-sm font-medium text-white shadow-md transition hover:opacity-90 disabled:opacity-50"
           >
             {loading ? "Génération en cours (30-60s)..." : "Lancer la génération"}
