@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -30,6 +29,7 @@ export default function CommandePage() {
   const [selectedOptions, setSelectedOptions] = useState<Record<string, number>>({});
   const [client, setClient] = useState({ name: "", email: "", phone: "", address: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export default function CommandePage() {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const toggleOption = (id: string, multiple: boolean) => {
+  const toggleOption = (id: string) => {
     setSelectedOptions((prev) => {
       const next = { ...prev };
       if (next[id]) delete next[id];
@@ -92,7 +92,34 @@ export default function CommandePage() {
       return;
     }
     setSubmitting(true);
+
     try {
+      // 1. Upload des photos vers Cloudinary avant le paiement
+      const uploaded: { url: string; roomType: string }[] = [];
+
+      for (let i = 0; i < photos.length; i++) {
+        setUploadProgress(`Envoi de la photo ${i + 1} sur ${photos.length}...`);
+        const formData = new FormData();
+        formData.append("photo", photos[i].file);
+
+        const upRes = await fetch(API_URL + "/api/payments/upload-photo", {
+          method: "POST",
+          body: formData,
+        });
+        const upData = await upRes.json();
+
+        if (!upRes.ok || !upData.url) {
+          setError(`Erreur lors de l'envoi de la photo ${i + 1}. Veuillez réessayer.`);
+          setUploadProgress("");
+          setSubmitting(false);
+          return;
+        }
+        uploaded.push({ url: upData.url, roomType: photos[i].roomType });
+      }
+
+      setUploadProgress("Préparation du paiement...");
+
+      // 2. Création de la session de paiement Stripe
       const res = await fetch(API_URL + "/api/payments/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -107,21 +134,24 @@ export default function CommandePage() {
             propertyAddress: client.address,
             propertyType,
             photoCount: String(photos.length),
-            rooms: photos.map((p) => p.roomType).join(","),
           },
+          photos: uploaded,
         }),
       });
+
       const data = await res.json();
       if (!res.ok || !data.checkoutUrl) {
         setError(data.error || "Erreur lors de la création du paiement.");
+        setUploadProgress("");
         setSubmitting(false);
         return;
       }
-      sessionStorage.setItem("evidence_order_id", data.orderId);
+
       window.location.href = data.checkoutUrl;
     } catch (err) {
       console.error(err);
       setError("Erreur réseau. Veuillez réessayer.");
+      setUploadProgress("");
       setSubmitting(false);
     }
   };
@@ -213,7 +243,7 @@ export default function CommandePage() {
                 className="w-full rounded-2xl border border-[#d8c5a2] px-4 py-3 text-sm"
               />
 
-              {photos.length > maxPhotos && (
+              {photos.length > maxPhotos && maxPhotos > 0 && (
                 <p className="text-sm text-[#8c6b34]">
                   Vous dépassez le nombre inclus. Ajoutez l'option « Photo supplémentaire » à l'étape suivante.
                 </p>
@@ -262,7 +292,7 @@ export default function CommandePage() {
                     <input
                       type="checkbox"
                       checked={!!selectedOptions[o.id]}
-                      onChange={() => toggleOption(o.id, o.multiple)}
+                      onChange={() => toggleOption(o.id)}
                     />
                     <span className="flex-1 text-sm font-medium">{o.label}</span>
                     <span className="text-sm">{o.price}€</span>
@@ -362,7 +392,7 @@ export default function CommandePage() {
                 disabled={submitting}
                 className="w-full rounded-2xl bg-[#b88a44] px-6 py-4 text-sm font-medium text-white shadow-md transition hover:opacity-90 disabled:opacity-50"
               >
-                {submitting ? "Redirection vers le paiement..." : "Payer " + total + "€"}
+                {submitting ? (uploadProgress || "Traitement...") : "Payer " + total + "€"}
               </button>
 
               <button onClick={() => setStep(5)} className="text-sm text-gray-500 underline">
