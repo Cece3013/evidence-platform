@@ -368,6 +368,54 @@ export default function TestStagingPage() {
               </div>
             </div>
 
+            {/* Contrôle post-génération — uniquement pour le pipeline biens vides */}
+            {result.controle && (
+              <div
+                className={
+                  "rounded-3xl border-2 p-6 " +
+                  (result.valide
+                    ? "border-emerald-300 bg-emerald-50"
+                    : "border-red-300 bg-red-50")
+                }
+              >
+                <p
+                  className={
+                    "text-sm font-semibold " +
+                    (result.valide ? "text-emerald-900" : "text-red-900")
+                  }
+                >
+                  {result.valide
+                    ? "Contrôle post-génération : validé"
+                    : "Contrôle post-génération : révision manuelle nécessaire"}
+                </p>
+                <p
+                  className={
+                    "mt-1 text-xs " +
+                    (result.valide ? "text-emerald-800" : "text-red-800")
+                  }
+                >
+                  {result.tentativesRegeneration > 0
+                    ? `${result.tentativesRegeneration} régénération(s) automatique(s) tentée(s) avant ce résultat.`
+                    : "Validé dès la première génération, aucune régénération nécessaire."}
+                </p>
+
+                {!result.valide && result.controle.issues_summary && (
+                  <p className="mt-3 rounded-xl bg-white p-3 text-sm text-red-800">
+                    {result.controle.issues_summary}
+                  </p>
+                )}
+
+                <details className="mt-4">
+                  <summary className="cursor-pointer text-xs text-gray-600">
+                    Voir le détail du contrôle (JSON)
+                  </summary>
+                  <pre className="mt-3 overflow-auto whitespace-pre-wrap rounded-xl bg-white p-4 text-xs text-gray-600">
+                    {JSON.stringify(result.controle, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            )}
+
             {result.detectedModules && (
               <div className="rounded-3xl bg-white p-6 shadow-sm">
                 <p className="text-sm font-medium text-gray-700">Micro-modules détectés</p>
