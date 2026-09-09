@@ -394,9 +394,13 @@ export default function TestStagingPage() {
                     (result.valide ? "text-emerald-800" : "text-red-800")
                   }
                 >
-                  {result.tentativesRegeneration > 0
-                    ? `${result.tentativesRegeneration} régénération(s) automatique(s) tentée(s) avant ce résultat.`
-                    : "Validé dès la première génération, aucune régénération nécessaire."}
+                  {result.valide
+                    ? (result.tentativesRegeneration > 0
+                        ? `Validé après ${result.tentativesRegeneration} régénération(s) automatique(s).`
+                        : "Validé dès la première génération, aucune régénération nécessaire.")
+                    : (result.tentativesRegeneration > 0
+                        ? `Rejeté après ${result.tentativesRegeneration} régénération(s) automatique(s) — toujours non conforme.`
+                        : "Rejeté dès la première génération — écarts jugés non corrigibles automatiquement par une simple régénération.")}
                 </p>
 
                 {!result.valide && result.controle.issues_summary && (
@@ -432,6 +436,17 @@ export default function TestStagingPage() {
                 </summary>
                 <pre className="mt-4 overflow-auto whitespace-pre-wrap text-xs text-gray-600">
                   {JSON.stringify(result.implantation, null, 2)}
+                </pre>
+              </details>
+            )}
+
+            {result.analyse && (
+              <details className="rounded-3xl bg-white p-6 shadow-sm">
+                <summary className="cursor-pointer text-sm font-medium text-gray-700">
+                  Voir l'analyse (Prompt A)
+                </summary>
+                <pre className="mt-4 overflow-auto whitespace-pre-wrap text-xs text-gray-600">
+                  {JSON.stringify(result.analyse, null, 2)}
                 </pre>
               </details>
             )}
