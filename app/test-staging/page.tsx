@@ -52,6 +52,49 @@ export default function TestStagingPage() {
   const [uploading, setUploading] = useState("");
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
+  const [comparaison, setComparaison] = useState<any[]>([]);
+  const [comparaisonEnCours, setComparaisonEnCours] = useState(false);
+
+  const PLAN_COMPARAISON = [
+    { model: "gpt-image-2", count: 3 },
+    { model: "gpt-image-2.5-flare", count: 3 },
+    { model: "gpt-image-2.5-sunburst", count: 2 },
+  ];
+
+  const lancerComparaisonModeles = async () => {
+    if (!result?.success || !result?.prompt || !result?.implantation) return;
+    setComparaisonEnCours(true);
+    setComparaison([]);
+
+    for (const { model, count } of PLAN_COMPARAISON) {
+      for (let i = 1; i <= count; i++) {
+        try {
+          const res = await fetch(API_URL + "/api/test-staging/comparer-un-modele", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              imageUrl: result.originalUrl,
+              prompt: result.prompt,
+              implantation: result.implantation,
+              model,
+              testKey,
+            }),
+          });
+          const data = await res.json();
+          setComparaison((prev) => [
+            ...prev,
+            res.ok
+              ? { model, tentative: i, ...data }
+              : { model, tentative: i, error: data.error || "Erreur" },
+          ]);
+        } catch (err) {
+          setComparaison((prev) => [...prev, { model, tentative: i, error: "Erreur réseau" }]);
+        }
+      }
+    }
+
+    setComparaisonEnCours(false);
+  };
 
   const roomList = mode === "vide" ? ROOM_TYPES_VIDE : ROOM_TYPES_HABITE;
 
@@ -417,6 +460,65 @@ export default function TestStagingPage() {
                     {JSON.stringify(result.controle, null, 2)}
                   </pre>
                 </details>
+              </div>
+            )}
+
+            {result.controle && mode === "vide" && (
+              <div className="rounded-3xl bg-white p-6 shadow-sm">
+                <p className="text-sm font-medium text-gray-700">
+                  Comparaison de modèles (diagnostic)
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Relance 8 générations à partir du même prompt et de la même implantation figée
+                  (sans relancer A ni B) : 3× gpt-image-2, 3× gpt-image-2.5-flare, 2× gpt-image-2.5-sunburst.
+                </p>
+                <button
+                  onClick={lancerComparaisonModeles}
+                  disabled={comparaisonEnCours}
+                  className="mt-3 rounded-2xl bg-[#1a1a1a] px-5 py-3 text-xs font-medium text-white disabled:opacity-50"
+                >
+                  {comparaisonEnCours
+                    ? `Comparaison en cours (${comparaison.length}/8)...`
+                    : "Lancer la comparaison de modèles"}
+                </button>
+
+                {comparaison.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {comparaison.map((c, i) => (
+                      <div
+                        key={i}
+                        className={
+                          "rounded-xl border p-3 text-xs " +
+                          (c.error
+                            ? "border-gray-300 bg-gray-50 text-gray-500"
+                            : c.controle?.controle_status === "VALIDE"
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                            : "border-red-300 bg-red-50 text-red-900")
+                        }
+                      >
+                        <span className="font-semibold">
+                          {c.model} — tentative {c.tentative}
+                        </span>{" "}
+                        —{" "}
+                        {c.error
+                          ? `Erreur : ${c.error}`
+                          : c.controle?.controle_status === "VALIDE"
+                          ? "Validé"
+                          : `Rejeté — ${c.controle?.issues_summary || "détail dans le JSON"}`}
+                        {c.generatedUrl && (
+                          <a
+                            href={c.generatedUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="ml-2 underline"
+                          >
+                            voir l'image
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
