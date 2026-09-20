@@ -29,6 +29,10 @@ export default function TestStagingV1Page() {
   const [choixCuisineAttente, setChoixCuisineAttente] = useState<any>(null);
   const [choixCuisineEnvoi, setChoixCuisineEnvoi] = useState(false);
 
+  // PROTOTYPE — Guide Visuel Assisté (salon_salle_a_manger uniquement)
+  const [guideImageUrl, setGuideImageUrl] = useState("");
+  const [guideUploading, setGuideUploading] = useState(false);
+
   const uploadFile = async (file: File): Promise<string | null> => {
     const formData = new FormData();
     formData.append("photo", file);
@@ -58,6 +62,18 @@ export default function TestStagingV1Page() {
     setUploading(false);
   };
 
+  // PROTOTYPE — upload du guide visuel (salon_salle_a_manger uniquement)
+  const handleGuide = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!testKey.trim()) return setError("Renseignez d'abord la clé de test.");
+    setGuideUploading(true);
+    setError("");
+    const url = await uploadFile(file);
+    if (url) setGuideImageUrl(url);
+    setGuideUploading(false);
+  };
+
   const lancerGeneration = async (choixCuisine: string | null = null) => {
     if (!imageUrl.trim()) return setError("Choisissez d'abord une photo.");
     if (choixCuisine) {
@@ -71,7 +87,7 @@ export default function TestStagingV1Page() {
       const res = await fetch(API_URL + "/api/test-staging-v1/vides", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl, roomType, choixCuisine, testKey }),
+        body: JSON.stringify({ imageUrl, roomType, choixCuisine, guideImageUrl, testKey }),
       });
       const data = await res.json();
 
@@ -150,6 +166,30 @@ export default function TestStagingV1Page() {
             </select>
           </div>
 
+          {/* PROTOTYPE — Guide Visuel Assisté, salon_salle_a_manger uniquement */}
+          {roomType === "salon_salle_a_manger" && (
+            <div className="rounded-2xl border border-dashed border-[#bd8a34] p-4">
+              <label className="text-sm font-medium text-gray-700">
+                Guide visuel (optionnel — prototype)
+              </label>
+              <p className="mt-1 text-xs text-gray-500">
+                Image avec les zones Salon/Salle à manger/Cuisine/Passage surlignées.
+                Si fourni, remplace la Lecture Fonctionnelle textuelle pour ce test.
+              </p>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleGuide}
+                disabled={guideUploading}
+                className="mt-2 w-full rounded-2xl border border-[#e8d3b0] px-4 py-3 text-sm"
+              />
+              {guideUploading && <p className="mt-2 text-xs text-[#9a6f26]">Envoi du guide...</p>}
+              {guideImageUrl && (
+                <img src={guideImageUrl} alt="Guide" className="mt-3 h-32 rounded-xl object-cover" />
+              )}
+            </div>
+          )}
+
           <button
             onClick={() => lancerGeneration(null)}
             disabled={loading || uploading}
@@ -160,6 +200,7 @@ export default function TestStagingV1Page() {
 
           {error && <p className="text-sm text-red-600 break-all">{error}</p>}
         </div>
+
 
         {/* ── Photo à reprendre ── */}
         {result?.status === "PHOTO_A_REPRENDRE" && (
@@ -246,6 +287,15 @@ export default function TestStagingV1Page() {
                 <p className="mt-2 text-sm text-[#9a6f26]">
                   {result.classificationCuisine.status} — {result.classificationCuisine.reason}
                 </p>
+              </div>
+            )}
+
+            {result.guideVisuelUtilise && (
+              <div className="rounded-3xl border-2 border-[#bd8a34] bg-[#faf4ec] p-6 shadow-sm">
+                <p className="text-sm font-medium text-[#1a1a1a]">
+                  Guide visuel utilisé pour ce test (Lecture Fonctionnelle textuelle désactivée)
+                </p>
+                <img src={result.guideImageUrl} alt="Guide utilisé" className="mt-3 max-h-64 rounded-xl" />
               </div>
             )}
 
