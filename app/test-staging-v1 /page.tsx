@@ -36,6 +36,11 @@ export default function TestStagingV1Page() {
   // TEST A/B — STYLE_VARIANT (salon et salon_salle_a_manger uniquement)
   const [utiliserStyleVariant, setUtiliserStyleVariant] = useState(false);
 
+  // Comparaison automatique des 5 familles sur la même photo — contourne la
+  // case à cocher, relance directement 5 fois l'API existante.
+  const [comparaisonStyles, setComparaisonStyles] = useState<any[]>([]);
+  const [comparaisonStylesEnCours, setComparaisonStylesEnCours] = useState(false);
+
   const uploadFile = async (file: File): Promise<string | null> => {
     const formData = new FormData();
     formData.append("photo", file);
@@ -114,6 +119,35 @@ export default function TestStagingV1Page() {
     setChoixCuisineEnvoi(false);
   };
 
+  // Lance 5 générations d'affilée sur la même photo, avec STYLE_VARIANT
+  // activé à chaque fois — la rotation séquentielle du backend fait
+  // apparaître A, B, C, D, E dans l'ordre. Contourne la case à cocher.
+  const lancerComparaisonStyles = async () => {
+    if (!imageUrl.trim()) return setError("Choisissez d'abord une photo.");
+    setComparaisonStylesEnCours(true);
+    setComparaisonStyles([]);
+    setError("");
+
+    for (let i = 1; i <= 5; i++) {
+      try {
+        const res = await fetch(API_URL + "/api/test-staging-v1/vides", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageUrl, roomType, utiliserStyleVariant: true, testKey }),
+        });
+        const data = await res.json();
+        setComparaisonStyles((prev) => [
+          ...prev,
+          res.ok ? { tentative: i, ...data } : { tentative: i, error: data.error || "Erreur" },
+        ]);
+      } catch (err) {
+        setComparaisonStyles((prev) => [...prev, { tentative: i, error: "Erreur réseau" }]);
+      }
+    }
+
+    setComparaisonStylesEnCours(false);
+  };
+
   return (
     <div className="min-h-screen bg-[#f7f2ee] text-[#1a1a1a] py-10 px-6">
       <div className="mx-auto max-w-5xl">
@@ -180,6 +214,18 @@ export default function TestStagingV1Page() {
               />
               Activer STYLE_VARIANT (test A/B — rotation séquentielle des 5 familles)
             </label>
+          )}
+
+          {(roomType === "salon" || roomType === "salon_salle_a_manger") && imageUrl && (
+            <button
+              onClick={lancerComparaisonStyles}
+              disabled={comparaisonStylesEnCours}
+              className="w-full rounded-2xl border-2 border-[#bd8a34] px-6 py-3 text-sm font-medium text-[#9a6f26] transition hover:bg-[#faf4ec] disabled:opacity-50"
+            >
+              {comparaisonStylesEnCours
+                ? `Génération des 5 familles en cours (${comparaisonStyles.length}/5)...`
+                : "Comparer automatiquement les 5 familles de style (A→E) sur cette photo"}
+            </button>
           )}
 
           {/* PROTOTYPE — Guide Visuel Assisté, salon_salle_a_manger uniquement */}
@@ -284,6 +330,35 @@ export default function TestStagingV1Page() {
         )}
 
         {/* ── Résultat ── */}
+        {/* ── Comparaison des 5 familles de style ── */}
+        {comparaisonStyles.length > 0 && (
+          <div className="mt-8 space-y-4">
+            <p className="text-lg font-semibold text-[#1a1a1a]">Comparaison des 5 familles de style</p>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {comparaisonStyles.map((c, i) => (
+                <div key={i} className="rounded-3xl bg-white p-4 shadow-sm">
+                  {c.error ? (
+                    <p className="text-sm text-red-600">Tentative {c.tentative} — Erreur : {c.error}</p>
+                  ) : (
+                    <>
+                      <p className="mb-2 text-sm font-medium text-[#9a6f26]">
+                        Famille {c.styleVariantId || "?"}
+                      </p>
+                      {c.generatedUrl ? (
+                        <img src={c.generatedUrl} alt={`Famille ${c.styleVariantId}`} className="w-full rounded-2xl" />
+                      ) : (
+                        <p className="text-xs text-amber-700">
+                          {c.status === "PHOTO_A_REPRENDRE" ? c.raison : "Pas de résultat"}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {result?.success && (
           <div className="mt-8 space-y-6">
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
