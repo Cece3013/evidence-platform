@@ -33,6 +33,9 @@ export default function TestStagingV1Page() {
   const [guideImageUrl, setGuideImageUrl] = useState("");
   const [guideUploading, setGuideUploading] = useState(false);
 
+  // TEST A/B — STYLE_VARIANT (salon et salon_salle_a_manger uniquement)
+  const [utiliserStyleVariant, setUtiliserStyleVariant] = useState(false);
+
   const uploadFile = async (file: File): Promise<string | null> => {
     const formData = new FormData();
     formData.append("photo", file);
@@ -87,7 +90,7 @@ export default function TestStagingV1Page() {
       const res = await fetch(API_URL + "/api/test-staging-v1/vides", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl, roomType, choixCuisine, guideImageUrl, testKey }),
+        body: JSON.stringify({ imageUrl, roomType, choixCuisine, guideImageUrl, utiliserStyleVariant, testKey }),
       });
       const data = await res.json();
 
@@ -165,6 +168,19 @@ export default function TestStagingV1Page() {
               ))}
             </select>
           </div>
+
+          {/* TEST A/B — STYLE_VARIANT, salon et salon_salle_a_manger uniquement */}
+          {(roomType === "salon" || roomType === "salon_salle_a_manger") && (
+            <label className="flex items-center gap-3 rounded-2xl border border-dashed border-[#bd8a34] p-4 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={utiliserStyleVariant}
+                onChange={(e) => setUtiliserStyleVariant(e.target.checked)}
+                className="h-4 w-4"
+              />
+              Activer STYLE_VARIANT (test A/B — rotation séquentielle des 5 familles)
+            </label>
+          )}
 
           {/* PROTOTYPE — Guide Visuel Assisté, salon_salle_a_manger uniquement */}
           {roomType === "salon_salle_a_manger" && (
@@ -286,6 +302,14 @@ export default function TestStagingV1Page() {
                 <p className="text-sm font-medium text-gray-700">Classification cuisine appliquée</p>
                 <p className="mt-2 text-sm text-[#9a6f26]">
                   {result.classificationCuisine.status} — {result.classificationCuisine.reason}
+                </p>
+              </div>
+            )}
+
+            {result.styleVariantId && (
+              <div className="rounded-3xl border-2 border-[#bd8a34] bg-[#faf4ec] p-6 shadow-sm">
+                <p className="text-sm font-medium text-[#1a1a1a]">
+                  STYLE_VARIANT appliqué — Famille {result.styleVariantId}
                 </p>
               </div>
             )}
