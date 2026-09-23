@@ -16,6 +16,19 @@ const ROOM_TYPES_V1 = [
   { id: "balcon_terrasse", label: "Balcon / Terrasse" },
 ];
 
+// Pièces où STYLE_VARIANT est actif — même liste que
+// ROOM_TYPES_AVEC_STYLE_VARIANT dans le backend (routes/styleVariantV1.js).
+// V2 validée sur Salon et Salon/SAM, extension en cours aux autres modules.
+const ROOM_TYPES_AVEC_STYLE_VARIANT = [
+  "salon",
+  "salon_salle_a_manger",
+  "chambre_enfant",
+  "chambre_parentale",
+  "salle_bain",
+  "cuisine",
+  "entree",
+];
+
 export default function TestStagingV1Page() {
   const [testKey, setTestKey] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -33,8 +46,9 @@ export default function TestStagingV1Page() {
   const [guideImageUrl, setGuideImageUrl] = useState("");
   const [guideUploading, setGuideUploading] = useState(false);
 
-  // TEST A/B — STYLE_VARIANT (salon et salon_salle_a_manger uniquement)
+  // STYLE_VARIANT (toutes les pièces de ROOM_TYPES_AVEC_STYLE_VARIANT)
   const [utiliserStyleVariant, setUtiliserStyleVariant] = useState(false);
+  const styleVariantDispo = ROOM_TYPES_AVEC_STYLE_VARIANT.includes(roomType);
 
   // Forcer une famille précise (A à E) pour un test ciblé, sans passer par
   // la rotation automatique — pratique pour retester juste A et C après
@@ -243,8 +257,8 @@ export default function TestStagingV1Page() {
             </select>
           </div>
 
-          {/* TEST A/B — STYLE_VARIANT, salon et salon_salle_a_manger uniquement */}
-          {(roomType === "salon" || roomType === "salon_salle_a_manger") && (
+          {/* STYLE_VARIANT — toutes les pièces de ROOM_TYPES_AVEC_STYLE_VARIANT */}
+          {styleVariantDispo && (
             <label className="flex items-center gap-3 rounded-2xl border border-dashed border-[#bd8a34] p-4 text-sm text-gray-700">
               <input
                 type="checkbox"
@@ -252,11 +266,11 @@ export default function TestStagingV1Page() {
                 onChange={(e) => setUtiliserStyleVariant(e.target.checked)}
                 className="h-4 w-4"
               />
-              Activer STYLE_VARIANT (test A/B — rotation séquentielle des 5 familles)
+              Activer STYLE_VARIANT (rotation séquentielle des 5 familles)
             </label>
           )}
 
-          {(roomType === "salon" || roomType === "salon_salle_a_manger") && utiliserStyleVariant && (
+          {styleVariantDispo && utiliserStyleVariant && (
             <div>
               <label className="text-sm font-medium text-gray-700">
                 Forcer une famille précise <span className="text-gray-400">(optionnel — pour le bouton "Lancer" ci-dessous uniquement)</span>
@@ -276,7 +290,7 @@ export default function TestStagingV1Page() {
             </div>
           )}
 
-          {(roomType === "salon" || roomType === "salon_salle_a_manger") && imageUrl && (
+          {styleVariantDispo && imageUrl && (
             <button
               onClick={lancerComparaisonStyles}
               disabled={comparaisonStylesEnCours}
@@ -288,7 +302,7 @@ export default function TestStagingV1Page() {
             </button>
           )}
 
-          {(roomType === "salon" || roomType === "salon_salle_a_manger") && imageUrl && (
+          {styleVariantDispo && imageUrl && (
             <button
               onClick={lancerSerieTemoin}
               disabled={serieTemoinEnCours}
