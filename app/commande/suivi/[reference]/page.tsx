@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -17,7 +16,12 @@ export default function SuiviPage() {
   useEffect(() => {
     if (!reference) return;
 
-    fetch(`${API_URL}/api/payments/suivi/${encodeURIComponent(reference)}`)
+    // Code secret présent dans le lien reçu par email (?code=...)
+    const code = new URLSearchParams(window.location.search).get("code") || "";
+
+    fetch(
+      `${API_URL}/api/payments/suivi/${encodeURIComponent(reference)}?code=${encodeURIComponent(code)}`
+    )
       .then(async (res) => {
         const json = await res.json();
         if (!res.ok) {
@@ -49,7 +53,7 @@ export default function SuiviPage() {
           <h1 className="text-2xl font-semibold">Commande introuvable</h1>
           <p className="mt-4 text-gray-600">{error}</p>
           <p className="mt-6 text-sm text-gray-500">
-            Vérifiez le lien reçu par email, ou contactez-nous à{" "}
+            Utilisez le lien complet reçu par email, ou contactez-nous à{" "}
             <a href="mailto:contact@evidence-homestaging.fr" className="text-[#8c6b34] underline">
               contact@evidence-homestaging.fr
             </a>
