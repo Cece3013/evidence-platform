@@ -36,6 +36,11 @@ export default function TestStagingV1Page() {
   // TEST A/B — STYLE_VARIANT (salon et salon_salle_a_manger uniquement)
   const [utiliserStyleVariant, setUtiliserStyleVariant] = useState(false);
 
+  // Forcer une famille précise (A à E) pour un test ciblé, sans passer par
+  // la rotation automatique — pratique pour retester juste A et C après
+  // une correction.
+  const [familleForcee, setFamilleForcee] = useState("");
+
   // Comparaison automatique des 5 familles sur la même photo — contourne la
   // case à cocher, relance directement 5 fois l'API existante.
   const [comparaisonStyles, setComparaisonStyles] = useState<any[]>([]);
@@ -101,7 +106,7 @@ export default function TestStagingV1Page() {
       const res = await fetch(API_URL + "/api/test-staging-v1/vides", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl, roomType, choixCuisine, guideImageUrl, utiliserStyleVariant, testKey }),
+        body: JSON.stringify({ imageUrl, roomType, choixCuisine, guideImageUrl, utiliserStyleVariant, familleForcee: familleForcee || null, testKey }),
       });
       const data = await res.json();
 
@@ -249,6 +254,26 @@ export default function TestStagingV1Page() {
               />
               Activer STYLE_VARIANT (test A/B — rotation séquentielle des 5 familles)
             </label>
+          )}
+
+          {(roomType === "salon" || roomType === "salon_salle_a_manger") && utiliserStyleVariant && (
+            <div>
+              <label className="text-sm font-medium text-gray-700">
+                Forcer une famille précise <span className="text-gray-400">(optionnel — pour le bouton "Lancer" ci-dessous uniquement)</span>
+              </label>
+              <select
+                value={familleForcee}
+                onChange={(e) => setFamilleForcee(e.target.value)}
+                className="mt-2 w-full rounded-2xl border border-[#e8d3b0] bg-white px-4 py-3 text-sm"
+              >
+                <option value="">Rotation automatique (prochaine dans l'ordre A→E)</option>
+                <option value="A">A — Naturel Doux</option>
+                <option value="B">B — Contemporain Chaleureux</option>
+                <option value="C">C — Méditerranéen Sobre</option>
+                <option value="D">D — Élégant Organique</option>
+                <option value="E">E — Scandi Lumineux</option>
+              </select>
+            </div>
           )}
 
           {(roomType === "salon" || roomType === "salon_salle_a_manger") && imageUrl && (
