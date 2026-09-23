@@ -41,6 +41,12 @@ export default function TestStagingV1Page() {
   const [comparaisonStyles, setComparaisonStyles] = useState<any[]>([]);
   const [comparaisonStylesEnCours, setComparaisonStylesEnCours] = useState(false);
 
+  // Série témoin — 5 générations SANS STYLE_VARIANT sur la même photo, pour
+  // isoler si la dérive d'implantation vient de STYLE_VARIANT ou de la
+  // variabilité déjà connue du modèle.
+  const [serieTemoin, setSerieTemoin] = useState<any[]>([]);
+  const [serieTemoinEnCours, setSerieTemoinEnCours] = useState(false);
+
   const uploadFile = async (file: File): Promise<string | null> => {
     const formData = new FormData();
     formData.append("photo", file);
@@ -148,6 +154,35 @@ export default function TestStagingV1Page() {
     setComparaisonStylesEnCours(false);
   };
 
+  // Série témoin : 5 générations SANS STYLE_VARIANT, même photo, même
+  // roomType — même mécanique que la comparaison de styles, mais avec
+  // utiliserStyleVariant explicitement à false à chaque appel.
+  const lancerSerieTemoin = async () => {
+    if (!imageUrl.trim()) return setError("Choisissez d'abord une photo.");
+    setSerieTemoinEnCours(true);
+    setSerieTemoin([]);
+    setError("");
+
+    for (let i = 1; i <= 5; i++) {
+      try {
+        const res = await fetch(API_URL + "/api/test-staging-v1/vides", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageUrl, roomType, utiliserStyleVariant: false, testKey }),
+        });
+        const data = await res.json();
+        setSerieTemoin((prev) => [
+          ...prev,
+          res.ok ? { tentative: i, ...data } : { tentative: i, error: data.error || "Erreur" },
+        ]);
+      } catch (err) {
+        setSerieTemoin((prev) => [...prev, { tentative: i, error: "Erreur réseau" }]);
+      }
+    }
+
+    setSerieTemoinEnCours(false);
+  };
+
   return (
     <div className="min-h-screen bg-[#f7f2ee] text-[#1a1a1a] py-10 px-6">
       <div className="mx-auto max-w-5xl">
@@ -225,6 +260,18 @@ export default function TestStagingV1Page() {
               {comparaisonStylesEnCours
                 ? `Génération des 5 familles en cours (${comparaisonStyles.length}/5)...`
                 : "Comparer automatiquement les 5 familles de style (A→E) sur cette photo"}
+            </button>
+          )}
+
+          {(roomType === "salon" || roomType === "salon_salle_a_manger") && imageUrl && (
+            <button
+              onClick={lancerSerieTemoin}
+              disabled={serieTemoinEnCours}
+              className="w-full rounded-2xl border-2 border-gray-400 px-6 py-3 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-50"
+            >
+              {serieTemoinEnCours
+                ? `Génération témoin en cours (${serieTemoin.length}/5)...`
+                : "Série témoin — 5 générations SANS STYLE_VARIANT sur cette photo"}
             </button>
           )}
 
@@ -330,6 +377,33 @@ export default function TestStagingV1Page() {
         )}
 
         {/* ── Résultat ── */}
+        {/* ── Série témoin (sans STYLE_VARIANT) ── */}
+        {serieTemoin.length > 0 && (
+          <div className="mt-8 space-y-4">
+            <p className="text-lg font-semibold text-[#1a1a1a]">Série témoin — sans STYLE_VARIANT</p>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {serieTemoin.map((c, i) => (
+                <div key={i} className="rounded-3xl bg-white p-4 shadow-sm">
+                  {c.error ? (
+                    <p className="text-sm text-red-600">Tentative {c.tentative} — Erreur : {c.error}</p>
+                  ) : (
+                    <>
+                      <p className="mb-2 text-sm font-medium text-gray-500">Tentative {c.tentative}</p>
+                      {c.generatedUrl ? (
+                        <img src={c.generatedUrl} alt={`Tentative ${c.tentative}`} className="w-full rounded-2xl" />
+                      ) : (
+                        <p className="text-xs text-amber-700">
+                          {c.status === "PHOTO_A_REPRENDRE" ? c.raison : "Pas de résultat"}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── Comparaison des 5 familles de style ── */}
         {comparaisonStyles.length > 0 && (
           <div className="mt-8 space-y-4">
