@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -81,8 +80,19 @@ export default function ConfirmationPage() {
               </div>
             </div>
 
+            {order.suiviUrl && (
+              <div className="mt-8 text-center">
+                <a
+                  href={order.suiviUrl}
+                  className="inline-block rounded-2xl bg-[#b88a44] px-8 py-4 text-sm font-medium text-white shadow-md transition hover:opacity-90"
+                >
+                  Suivre ma commande
+                </a>
+              </div>
+            )}
+
             <p className="mt-6 text-center text-sm text-gray-500">
-              Un email de confirmation vient de vous être envoyé.
+              Un email de confirmation vient de vous être envoyé, avec le lien de suivi de votre commande.
             </p>
 
             <p className="mt-6 text-center text-sm text-gray-500">
