@@ -18,15 +18,14 @@ const ROOM_TYPES_V1 = [
 
 // Pièces où STYLE_VARIANT est actif — même liste que
 // ROOM_TYPES_AVEC_STYLE_VARIANT dans le backend (routes/styleVariantV1.js).
-// V2 validée sur Salon et Salon/SAM, extension en cours aux autres modules.
+// V2 validée sur Salon et Salon/SAM ; déclinaisons chambres en test.
+// Pas de STYLE_VARIANT en V1 sur Cuisine, Salle de bain, Balcon/Terrasse, Entrée.
 const ROOM_TYPES_AVEC_STYLE_VARIANT = [
   "salon",
   "salon_salle_a_manger",
-  "chambre_enfant",
   "chambre_parentale",
-  "salle_bain",
-  "cuisine",
-  "entree",
+  "chambre_enfant",
+  "chambre_ado",
 ];
 
 export default function TestStagingV1Page() {
