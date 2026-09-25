@@ -510,6 +510,44 @@ export default function TestStagingV1Page() {
               </div>
             )}
 
+            {result.lectureImplantation && (
+              <details open className="rounded-3xl border-2 border-[#bd8a34] bg-[#faf4ec] p-6 shadow-sm">
+                <summary className="cursor-pointer text-sm font-medium text-[#1a1a1a]">
+                  Voir la lecture d'implantation du lit
+                </summary>
+                {result.lectureImplantation.fallback ? (
+                  <p className="mt-4 text-sm text-red-700">
+                    Lecture en échec après 2 tentatives — image générée SANS lecture
+                    (fallback). Erreur : {result.lectureImplantation.erreur}
+                  </p>
+                ) : (
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-[#9a6f26]">
+                        A — Décision envoyée au modèle d'image
+                      </p>
+                      <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-white p-3 text-xs text-gray-800">
+                        {result.lectureImplantation.decision}
+                      </pre>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                        Analyse (diagnostic uniquement — non envoyée au modèle d'image)
+                      </p>
+                      <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-white p-3 text-xs text-gray-600">
+                        {result.lectureImplantation.analyse}
+                      </pre>
+                    </div>
+                    {result.lectureImplantation.tentatives > 1 && (
+                      <p className="text-xs text-amber-700">
+                        Décision obtenue à la 2e tentative.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </details>
+            )}
+
             <details className="rounded-3xl bg-white p-6 shadow-sm">
               <summary className="cursor-pointer text-sm font-medium text-gray-700">
                 Voir le contrôle photo
