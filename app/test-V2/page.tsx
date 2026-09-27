@@ -18,15 +18,19 @@ const ROOM_TYPES_V1 = [
 
 // Pièces où STYLE_VARIANT est actif — même liste que
 // ROOM_TYPES_AVEC_STYLE_VARIANT dans le backend (routes/styleVariantV1.js).
-// V2 validée sur Salon et Salon/SAM ; déclinaisons chambres en test.
-// Pas de STYLE_VARIANT en V1 sur Cuisine, Salle de bain, Balcon/Terrasse, Entrée.
+// Salon, Salon/SAM et chambres validés ; Cuisine et Entrée en test.
+// Pas de STYLE_VARIANT sur Salle de bain et Balcon/Terrasse.
 const ROOM_TYPES_AVEC_STYLE_VARIANT = [
   "salon",
   "salon_salle_a_manger",
   "chambre_parentale",
   "chambre_enfant",
   "chambre_ado",
+  "cuisine",
+  "entree",
 ];
+
+const FAMILLES = ["A", "B", "C", "D", "E"];
 
 export default function TestStagingV1Page() {
   const [testKey, setTestKey] = useState("");
@@ -58,6 +62,10 @@ export default function TestStagingV1Page() {
   // case à cocher, relance directement 5 fois l'API existante.
   const [comparaisonStyles, setComparaisonStyles] = useState<any[]>([]);
   const [comparaisonStylesEnCours, setComparaisonStylesEnCours] = useState(false);
+
+  // Cuisine existante : option appliquée aux 5 générations de la comparaison
+  // (ignorée par le serveur pour une cuisine vide ou incomplète).
+  const [choixComparaisonCuisine, setChoixComparaisonCuisine] = useState("projection_modernisee");
 
   // Série témoin — 5 générations SANS STYLE_VARIANT sur la même photo, pour
   // isoler si la dérive d'implantation vient de STYLE_VARIANT ou de la
@@ -143,9 +151,9 @@ export default function TestStagingV1Page() {
     setChoixCuisineEnvoi(false);
   };
 
-  // Lance 5 générations d'affilée sur la même photo, avec STYLE_VARIANT
-  // activé à chaque fois — la rotation séquentielle du backend fait
-  // apparaître A, B, C, D, E dans l'ordre. Contourne la case à cocher.
+  // Lance 5 générations d'affilée sur la même photo, en forçant tour à tour
+  // les familles A, B, C, D, E (ordre garanti, indépendant de la rotation).
+  // Contourne la case à cocher.
   const lancerComparaisonStyles = async () => {
     if (!imageUrl.trim()) return setError("Choisissez d'abord une photo.");
     setComparaisonStylesEnCours(true);
@@ -157,7 +165,14 @@ export default function TestStagingV1Page() {
         const res = await fetch(API_URL + "/api/test-staging-v1/vides", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageUrl, roomType, utiliserStyleVariant: true, testKey }),
+          body: JSON.stringify({
+            imageUrl,
+            roomType,
+            utiliserStyleVariant: true,
+            familleForcee: FAMILLES[i - 1],
+            choixCuisine: roomType === "cuisine" ? choixComparaisonCuisine : null,
+            testKey,
+          }),
         });
         const data = await res.json();
         setComparaisonStyles((prev) => [
@@ -285,6 +300,23 @@ export default function TestStagingV1Page() {
                 <option value="C">C — Méditerranéen Sobre</option>
                 <option value="D">D — Élégant Organique</option>
                 <option value="E">E — Scandi Lumineux</option>
+              </select>
+            </div>
+          )}
+
+          {styleVariantDispo && imageUrl && roomType === "cuisine" && (
+            <div>
+              <label className="text-sm font-medium text-gray-700">
+                Option cuisine pour la comparaison des 5 familles{" "}
+                <span className="text-gray-400">(sans effet sur une cuisine vide ou incomplète)</span>
+              </label>
+              <select
+                value={choixComparaisonCuisine}
+                onChange={(e) => setChoixComparaisonCuisine(e.target.value)}
+                className="mt-2 w-full rounded-2xl border border-[#e8d3b0] bg-white px-4 py-3 text-sm"
+              >
+                <option value="projection_modernisee">Projection modernisée</option>
+                <option value="valorisation_douce">Valorisation douce</option>
               </select>
             </div>
           )}
