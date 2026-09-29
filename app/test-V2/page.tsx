@@ -67,6 +67,12 @@ export default function TestStagingV1Page() {
   // (ignorée par le serveur pour une cuisine vide ou incomplète).
   const [choixComparaisonCuisine, setChoixComparaisonCuisine] = useState("projection_modernisee");
 
+  // Salle de bain V4 : variante forcée pour les tests ("" = déduite de la famille).
+  const [varianteSdb, setVarianteSdb] = useState("");
+  // Comparaison SDB : 2 niveaux × 2 variantes sur la même photo.
+  const [comparaisonSdb, setComparaisonSdb] = useState<any[]>([]);
+  const [comparaisonSdbEnCours, setComparaisonSdbEnCours] = useState(false);
+
   // Série témoin — 5 générations SANS STYLE_VARIANT sur la même photo, pour
   // isoler si la dérive d'implantation vient de STYLE_VARIANT ou de la
   // variabilité déjà connue du modèle.
@@ -127,13 +133,23 @@ export default function TestStagingV1Page() {
       const res = await fetch(API_URL + "/api/test-staging-v1/vides", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl, roomType, choixCuisine, guideImageUrl, utiliserStyleVariant, familleForcee: familleForcee || null, testKey }),
+        body: JSON.stringify({
+          imageUrl,
+          roomType,
+          choixCuisine: roomType === "cuisine" ? choixCuisine : null,
+          choixSdb: roomType === "salle_bain" ? choixCuisine : null,
+          varianteSdb: roomType === "salle_bain" ? varianteSdb || null : null,
+          guideImageUrl,
+          utiliserStyleVariant,
+          familleForcee: familleForcee || null,
+          testKey,
+        }),
       });
       const data = await res.json();
 
       if (!res.ok) {
         setError(data.error + (data.detail ? " — " + JSON.stringify(data.detail) : ""));
-      } else if (data.status === "CHOIX_CUISINE_REQUIS") {
+      } else if (data.status === "CHOIX_CUISINE_REQUIS" || data.status === "CHOIX_SDB_REQUIS") {
         setChoixCuisineAttente(data);
         setResult(null);
       } else if (data.status === "PHOTO_A_REPRENDRE") {
@@ -149,6 +165,36 @@ export default function TestStagingV1Page() {
     }
     setLoading(false);
     setChoixCuisineEnvoi(false);
+  };
+
+  // Salle de bain V4 : 4 générations sur la même photo —
+  // Valorisation douce et Projection modernisée, chacune en Moderne blanc
+  // puis Moderne bois. (Une SDB incomplète ou vide ignore le niveau choisi.)
+  const lancerComparaisonSdb = async () => {
+    if (!imageUrl.trim()) return setError("Choisissez d'abord une photo.");
+    setComparaisonSdbEnCours(true);
+    setComparaisonSdb([]);
+    setError("");
+    const combinaisons = [
+      { choixSdb: "valorisation_douce", varianteSdb: "blanc" },
+      { choixSdb: "valorisation_douce", varianteSdb: "bois" },
+      { choixSdb: "projection_modernisee", varianteSdb: "blanc" },
+      { choixSdb: "projection_modernisee", varianteSdb: "bois" },
+    ];
+    for (const c of combinaisons) {
+      try {
+        const res = await fetch(API_URL + "/api/test-staging-v1/vides", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageUrl, roomType: "salle_bain", ...c, testKey }),
+        });
+        const data = await res.json();
+        setComparaisonSdb((prev) => [...prev, res.ok ? { ...c, ...data } : { ...c, error: data.error || "Erreur" }]);
+      } catch (err) {
+        setComparaisonSdb((prev) => [...prev, { ...c, error: "Erreur réseau" }]);
+      }
+    }
+    setComparaisonSdbEnCours(false);
   };
 
   // Lance 5 générations d'affilée sur la même photo, en forçant tour à tour
@@ -304,6 +350,36 @@ export default function TestStagingV1Page() {
             </div>
           )}
 
+          {roomType === "salle_bain" && (
+            <div>
+              <label className="text-sm font-medium text-gray-700">
+                Variante salle de bain{" "}
+                <span className="text-gray-400">(optionnel — pour le bouton "Lancer")</span>
+              </label>
+              <select
+                value={varianteSdb}
+                onChange={(e) => setVarianteSdb(e.target.value)}
+                className="mt-2 w-full rounded-2xl border border-[#e8d3b0] bg-white px-4 py-3 text-sm"
+              >
+                <option value="">Déduite de la famille (Moderne blanc par défaut)</option>
+                <option value="blanc">Moderne blanc</option>
+                <option value="bois">Moderne bois</option>
+              </select>
+            </div>
+          )}
+
+          {roomType === "salle_bain" && imageUrl && (
+            <button
+              onClick={lancerComparaisonSdb}
+              disabled={comparaisonSdbEnCours}
+              className="w-full rounded-2xl border-2 border-[#bd8a34] px-6 py-3 text-sm font-medium text-[#9a6f26] transition hover:bg-[#faf4ec] disabled:opacity-50"
+            >
+              {comparaisonSdbEnCours
+                ? `Génération salle de bain en cours (${comparaisonSdb.length}/4)...`
+                : "Comparer salle de bain : 2 niveaux × 2 variantes (4 images)"}
+            </button>
+          )}
+
           {styleVariantDispo && imageUrl && roomType === "cuisine" && (
             <div>
               <label className="text-sm font-medium text-gray-700">
@@ -401,15 +477,17 @@ export default function TestStagingV1Page() {
         {choixCuisineAttente && (
           <div className="mt-8 rounded-3xl border-2 border-[#e8d3b0] bg-white p-8">
             <p className="text-lg font-semibold text-[#1a1a1a]">
-              Niveau de transformation de la cuisine
+              {choixCuisineAttente.status === "CHOIX_SDB_REQUIS"
+                ? "Niveau de traitement de la salle de bain"
+                : "Niveau de transformation de la cuisine"}
             </p>
             <p className="mt-2 text-sm text-gray-600">
-              Cuisine détectée comme :{" "}
+              {choixCuisineAttente.status === "CHOIX_SDB_REQUIS" ? "Salle de bain" : "Cuisine"} détectée comme :{" "}
               <span className="font-medium">
-                {choixCuisineAttente.classificationCuisine?.status}
+                {(choixCuisineAttente.classificationCuisine || choixCuisineAttente.classificationSdb)?.status}
               </span>
               {" — "}
-              {choixCuisineAttente.classificationCuisine?.reason}
+              {(choixCuisineAttente.classificationCuisine || choixCuisineAttente.classificationSdb)?.reason}
             </p>
 
             <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -474,6 +552,42 @@ export default function TestStagingV1Page() {
           </div>
         )}
 
+        {/* ── Comparaison salle de bain : 2 niveaux × 2 variantes ── */}
+        {comparaisonSdb.length > 0 && (
+          <div className="mt-8 space-y-4">
+            <p className="text-lg font-semibold text-[#1a1a1a]">Comparaison salle de bain — niveaux et variantes</p>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {comparaisonSdb.map((c, i) => (
+                <div key={i} className="rounded-3xl bg-white p-4 shadow-sm">
+                  <p className="mb-2 text-sm font-medium text-[#9a6f26]">
+                    {c.niveauSdb === "complete"
+                      ? "SDB incomplète ou vide"
+                      : c.choixSdb === "projection_modernisee"
+                      ? "Projection modernisée"
+                      : "Valorisation douce"}
+                    {" — Moderne "}
+                    {c.varianteSdb}
+                  </p>
+                  {c.error ? (
+                    <p className="text-sm text-red-600">Erreur : {c.error}</p>
+                  ) : c.generatedUrl ? (
+                    <img src={c.generatedUrl} alt="" className="w-full rounded-2xl" />
+                  ) : (
+                    <p className="text-xs text-amber-700">
+                      {c.status === "PHOTO_A_REPRENDRE" ? c.raison : "Pas de résultat"}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+            {comparaisonSdb[0]?.classificationSdb && (
+              <p className="text-sm text-gray-600">
+                Classification : {comparaisonSdb[0].classificationSdb.status} — {comparaisonSdb[0].classificationSdb.reason}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* ── Comparaison des 5 familles de style ── */}
         {comparaisonStyles.length > 0 && (
           <div className="mt-8 space-y-4">
@@ -522,6 +636,19 @@ export default function TestStagingV1Page() {
                 <p className="mt-2 text-sm text-[#9a6f26]">
                   {result.classificationCuisine.status} — {result.classificationCuisine.reason}
                 </p>
+              </div>
+            )}
+
+            {result.niveauSdb && (
+              <div className="rounded-3xl border-2 border-[#bd8a34] bg-[#faf4ec] p-6 shadow-sm">
+                <p className="text-sm font-medium text-[#1a1a1a]">
+                  Salle de bain — niveau : {result.niveauSdb} — variante : Moderne {result.varianteSdb}
+                </p>
+                {result.classificationSdb && (
+                  <p className="mt-2 text-sm text-[#9a6f26]">
+                    {result.classificationSdb.status} — {result.classificationSdb.reason}
+                  </p>
+                )}
               </div>
             )}
 
