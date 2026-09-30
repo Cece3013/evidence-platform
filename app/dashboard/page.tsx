@@ -68,6 +68,10 @@ export default function RealEstateStagingDashboard() {
   const photosRef = useRef<Photo[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  // Achat de photos supplémentaires
+  const [quantiteAchat, setQuantiteAchat] = useState(5);
+  const [achatEnCours, setAchatEnCours] = useState(false);
+  const [messageAchat, setMessageAchat] = useState("");
 
   photosRef.current = photos;
   const isVide = typeBien === "vide";
@@ -75,7 +79,36 @@ export default function RealEstateStagingDashboard() {
 
   useEffect(() => {
     fetchAccount();
+    // Retour de Stripe après un achat : le crédit arrive par le webhook,
+    // on relit le quota quelques secondes plus tard
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("achat") === "ok") {
+      setMessageAchat("Paiement reçu : vos photos supplémentaires sont ajoutées à votre solde.");
+      setTimeout(fetchQuota, 4000);
+      window.history.replaceState(null, "", "/dashboard");
+    }
   }, []);
+
+  const acheterPhotos = async () => {
+    setMessageAchat("");
+    setAchatEnCours(true);
+    try {
+      const res = await fetch(API_URL + "/api/pro/projects/acheter-photos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token() },
+        body: JSON.stringify({ quantite: quantiteAchat }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.checkoutUrl) {
+        setMessageAchat(data.error || "Impossible de lancer l'achat.");
+        setAchatEnCours(false);
+        return;
+      }
+      window.location.href = data.checkoutUrl;
+    } catch {
+      setMessageAchat("Erreur réseau.");
+      setAchatEnCours(false);
+    }
+  };
 
   const token = () => localStorage.getItem("evidence_pro_token");
 
@@ -218,7 +251,7 @@ export default function RealEstateStagingDashboard() {
     if (!projectName.trim()) return setMessage("Veuillez entrer un nom de projet.");
     if (!typeBien) return setMessage("Choisissez bien vide ou bien habité.");
     if (!toutesPretes) return setMessage("Toutes les photos doivent être acceptées avant l'envoi.");
-    if (depasseQuota) return setMessage(`Il vous reste ${quota.restantes} photo(s) ce mois-ci.`);
+    if (depasseQuota) return setMessage(`Il vous reste ${quota.restantes} photo(s).`);
 
     setSubmitting(true);
     try {
@@ -283,8 +316,14 @@ export default function RealEstateStagingDashboard() {
                   {account?.offerName || "Abonnement"}
                 </p>
                 <p className="text-lg font-semibold">
-                  {quota ? `${quota.restantes} / ${quota.total} photos restantes ce mois-ci` : `${totalPhotos} photos incluses / mois`}
+                  {quota ? `${quota.restantes} photo(s) disponible(s)` : `${totalPhotos} photos incluses / mois`}
                 </p>
+                {quota && (
+                  <p className="text-xs text-gray-500">
+                    {quota.inclusRestantes} / {quota.inclus} incluses ce mois-ci
+                    {quota.supplementaires > 0 ? ` + ${quota.supplementaires} supplémentaire(s)` : ""}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -434,7 +473,7 @@ export default function RealEstateStagingDashboard() {
 
                 {depasseQuota && (
                   <p className="text-sm text-red-600">
-                    Il vous reste {quota.restantes} photo(s) ce mois-ci. Retirez des photos ou changez d'offre.
+                    Il vous reste {quota.restantes} photo(s). Retirez des photos, ou achetez des photos supplémentaires ci-dessous.
                   </p>
                 )}
                 {photos.length > 0 && !toutesPretes && !enTraitement && (
@@ -451,6 +490,37 @@ export default function RealEstateStagingDashboard() {
                 </button>
               </div>
             </section>
+
+            {quota && (
+              <section className="rounded-3xl bg-white p-8 shadow-sm">
+                <h2 className="text-xl font-semibold">Photos supplémentaires</h2>
+                <p className="mt-2 text-sm text-gray-600">
+                  Besoin de plus de photos ce mois-ci ? {quota.prixPhotoSup} € la photo avec votre offre.
+                  Les photos achetées restent valables les mois suivants tant qu'elles ne sont pas utilisées.
+                </p>
+                <div className="mt-5 flex flex-wrap items-center gap-4">
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={quantiteAchat}
+                    onChange={(e) => setQuantiteAchat(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+                    className="w-24 rounded-2xl border border-[#e8dfd2] px-4 py-3 text-sm"
+                  />
+                  <span className="text-sm text-gray-600">
+                    photo(s) — total {(quantiteAchat * quota.prixPhotoSup).toFixed(2).replace(".", ",")} €
+                  </span>
+                  <button
+                    onClick={acheterPhotos}
+                    disabled={achatEnCours}
+                    className="rounded-2xl border-2 border-[#b88a44] px-5 py-3 text-sm font-medium text-[#8c6b34] transition hover:bg-[#faf6ef] disabled:opacity-50"
+                  >
+                    {achatEnCours ? "Redirection..." : "Acheter"}
+                  </button>
+                </div>
+                {messageAchat && <p className="mt-3 text-sm text-[#8c6b34]">{messageAchat}</p>}
+              </section>
+            )}
           </main>
         </div>
       </div>
