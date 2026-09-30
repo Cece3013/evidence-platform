@@ -21,9 +21,10 @@ const PIECES: Record<string, string> = {
   jardin: "Jardin",
 };
 
-// Lien de téléchargement direct d'une image Cloudinary
+// Lien de téléchargement direct d'une image Cloudinary, converti en JPG
+// haute qualité (format attendu par les portails immobiliers, plus léger que PNG)
 const lienTelechargement = (url: string) =>
-  url.includes("/upload/") ? url.replace("/upload/", "/upload/fl_attachment/") : url;
+  url.includes("/upload/") ? url.replace("/upload/", "/upload/fl_attachment,f_jpg,q_90/") : url;
 
 export default function ProjectDetailsPage() {
   const router = useRouter();
