@@ -79,12 +79,29 @@ export default function RealEstateStagingDashboard() {
 
   useEffect(() => {
     fetchAccount();
-    // Retour de Stripe après un achat : le crédit arrive par le webhook,
-    // on relit le quota quelques secondes plus tard
-    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("achat") === "ok") {
-      setMessageAchat("Paiement reçu : vos photos supplémentaires sont ajoutées à votre solde.");
-      setTimeout(fetchQuota, 4000);
+    // Retour de Stripe après un achat : on confirme le paiement auprès du
+    // serveur (qui crédite le solde), puis on relit le quota
+    const sessionAchat = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("achat") : null;
+    if (sessionAchat) {
       window.history.replaceState(null, "", "/dashboard");
+      (async () => {
+        try {
+          const res = await fetch(API_URL + "/api/pro/projects/confirmer-achat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: "Bearer " + token() },
+            body: JSON.stringify({ sessionId: sessionAchat }),
+          });
+          const data = await res.json();
+          setMessageAchat(
+            res.ok
+              ? `Paiement reçu : ${data.quantite} photo(s) supplémentaire(s) ajoutée(s) à votre solde.`
+              : data.error || "Paiement reçu, le crédit sera ajouté dans quelques instants."
+          );
+        } catch {
+          setMessageAchat("Paiement reçu, le crédit sera ajouté dans quelques instants.");
+        }
+        fetchQuota();
+      })();
     }
   }, []);
 
