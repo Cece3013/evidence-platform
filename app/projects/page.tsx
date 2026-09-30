@@ -106,7 +106,8 @@ export default function ProjectsPage() {
               {filteredProjects.map((project) => (
                 <div
                   key={project.id}
-                  className="overflow-hidden rounded-[32px] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                  onClick={() => router.push(`/projects/${project.id}`)}
+                  className="cursor-pointer overflow-hidden rounded-[32px] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
                 >
                   <div className="relative h-64 bg-[#ddd3c1] flex items-center justify-center">
                     <div className="absolute left-5 top-5 rounded-full bg-[#233124] px-4 py-2 text-xs font-medium text-white">
