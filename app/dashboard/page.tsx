@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardSidebar from "@/app/components/DashboardSidebar";
 import ProtectedRoute from "@/app/components/ProtectedRoute";
@@ -13,106 +13,241 @@ const OFFER_PHOTOS: Record<string, number> = {
   pro_agency: 80,
 };
 
-const ROOM_TYPES = [
+// Types de pièces = modules des systèmes validés
+const ROOM_TYPES_VIDE = [
   { id: "salon", label: "Salon" },
-  { id: "chambre", label: "Chambre" },
+  { id: "salon_salle_a_manger", label: "Salon / Salle à manger" },
   { id: "cuisine", label: "Cuisine" },
   { id: "salle_bain", label: "Salle de bain" },
-  { id: "terrasse", label: "Terrasse" },
+  { id: "chambre_parentale", label: "Chambre parentale" },
+  { id: "chambre_enfant", label: "Chambre enfant" },
+  { id: "chambre_ado", label: "Chambre ado" },
+  { id: "entree", label: "Entrée" },
+  { id: "balcon_terrasse", label: "Balcon / Terrasse" },
 ];
+
+const ROOM_TYPES_HABITE = [
+  { id: "salon", label: "Salon" },
+  { id: "salon_salle_a_manger", label: "Salon / Salle à manger" },
+  { id: "cuisine", label: "Cuisine" },
+  { id: "salle_bain", label: "Salle de bain" },
+  { id: "chambre_parentale", label: "Chambre parentale" },
+  { id: "chambre_enfant", label: "Chambre enfant" },
+  { id: "chambre_ado", label: "Chambre ado" },
+  { id: "bureau", label: "Bureau" },
+  { id: "entree", label: "Entrée" },
+  { id: "balcon_terrasse", label: "Balcon / Terrasse" },
+  { id: "jardin", label: "Jardin" },
+];
+
+type Etat = "envoi" | "verification" | "acceptee" | "choix" | "refusee" | "erreur" | "prete";
+
+type Photo = {
+  id: string;
+  file: File;
+  apercu: string;
+  roomType: string;
+  url?: string;
+  etat: Etat;
+  raison?: string;
+  conseil?: string;
+  verification?: any;
+  jeton?: string;
+  options?: { id: string; label: string; description: string }[];
+  choixCuisine?: string;
+};
 
 export default function RealEstateStagingDashboard() {
   const router = useRouter();
   const [account, setAccount] = useState<any>(null);
+  const [quota, setQuota] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [projectName, setProjectName] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
-  const [roomType, setRoomType] = useState("salon");
+  const [typeBien, setTypeBien] = useState<"vide" | "habite" | "">("");
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const photosRef = useRef<Photo[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+
+  photosRef.current = photos;
+  const isVide = typeBien === "vide";
+  const roomTypes = typeBien === "habite" ? ROOM_TYPES_HABITE : ROOM_TYPES_VIDE;
 
   useEffect(() => {
     fetchAccount();
   }, []);
 
+  const token = () => localStorage.getItem("evidence_pro_token");
+
   const fetchAccount = async () => {
-    const token = localStorage.getItem("evidence_pro_token");
-    if (!token) {
+    if (!token()) {
       router.push("/login");
       return;
     }
     try {
       const res = await fetch(API_URL + "/api/pro/auth/me", {
-        headers: { Authorization: "Bearer " + token },
+        headers: { Authorization: "Bearer " + token() },
       });
       if (!res.ok) {
         localStorage.removeItem("evidence_pro_token");
         router.push("/login");
         return;
       }
-      const data = await res.json();
-      setAccount(data);
+      setAccount(await res.json());
+      fetchQuota();
     } catch (err) {
       console.error(err);
     }
     setLoading(false);
   };
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        resolve(result.split(",")[1]);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+  const fetchQuota = async () => {
+    try {
+      const res = await fetch(API_URL + "/api/pro/projects/quota", {
+        headers: { Authorization: "Bearer " + token() },
+      });
+      if (res.ok) setQuota(await res.json());
+    } catch {
+      /* le quota reste simplement non affiché */
+    }
   };
+
+  const majPhoto = (id: string, changes: Partial<Photo>) => {
+    setPhotos((prev) => prev.map((p) => (p.id === id ? { ...p, ...changes } : p)));
+  };
+
+  // ── Vérification d'une photo de bien vide (même contrôle que les particuliers)
+  const verifierPhoto = async (id: string, url: string, roomType: string) => {
+    majPhoto(id, { etat: "verification", raison: undefined, conseil: undefined, options: undefined, choixCuisine: undefined, verification: undefined, jeton: undefined });
+    try {
+      const res = await fetch(API_URL + "/api/payments/verifier-photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, roomType }),
+      });
+      const data = await res.json();
+      const actuelle = photosRef.current.find((p) => p.id === id);
+      if (!actuelle || actuelle.roomType !== roomType) return;
+
+      if (!res.ok) {
+        majPhoto(id, { etat: "erreur", raison: data.error || "La vérification a échoué." });
+      } else if (data.statut === "REFUSEE") {
+        majPhoto(id, { etat: "refusee", raison: data.raison, conseil: data.conseil });
+      } else if (data.statut === "CHOIX_CUISINE") {
+        majPhoto(id, {
+          etat: "choix",
+          verification: data.verification,
+          jeton: data.jeton,
+          options: data.options,
+          choixCuisine: data.recommandation,
+        });
+      } else {
+        majPhoto(id, { etat: "acceptee", verification: data.verification, jeton: data.jeton });
+      }
+    } catch {
+      majPhoto(id, { etat: "erreur", raison: "Erreur réseau pendant la vérification." });
+    }
+  };
+
+  // ── Envoi sur Cloudinary puis vérification si bien vide
+  const envoyerPhoto = async (photo: Photo, vide: boolean) => {
+    try {
+      const formData = new FormData();
+      formData.append("photo", photo.file);
+      const res = await fetch(API_URL + "/api/payments/upload-photo", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        majPhoto(photo.id, { etat: "erreur", raison: data.error || "Envoi impossible." });
+        return;
+      }
+      majPhoto(photo.id, { url: data.url });
+      if (vide) {
+        const actuelle = photosRef.current.find((p) => p.id === photo.id);
+        await verifierPhoto(photo.id, data.url, actuelle?.roomType || photo.roomType);
+      } else {
+        majPhoto(photo.id, { etat: "prete" });
+      }
+    } catch {
+      majPhoto(photo.id, { etat: "erreur", raison: "Erreur réseau pendant l'envoi." });
+    }
+  };
+
+  const ajouterPhotos = (fichiers: File[]) => {
+    const nouvelles: Photo[] = fichiers.map((file) => ({
+      id: Math.random().toString(36).slice(2),
+      file,
+      apercu: URL.createObjectURL(file),
+      roomType: roomTypes[0].id,
+      etat: "envoi",
+    }));
+    setPhotos((prev) => [...prev, ...nouvelles]);
+    nouvelles.forEach((p) => envoyerPhoto(p, isVide));
+  };
+
+  const changerPiece = (photo: Photo, roomType: string) => {
+    majPhoto(photo.id, { roomType });
+    if (isVide && photo.url) verifierPhoto(photo.id, photo.url, roomType);
+  };
+
+  const reessayer = (photo: Photo) => {
+    if (photo.url && isVide) verifierPhoto(photo.id, photo.url, photo.roomType);
+    else {
+      majPhoto(photo.id, { etat: "envoi", raison: undefined });
+      envoyerPhoto(photo, isVide);
+    }
+  };
+
+  const retirer = (id: string) => setPhotos((prev) => prev.filter((p) => p.id !== id));
+
+  const changerTypeBien = (t: "vide" | "habite") => {
+    if (photos.length > 0 && t !== typeBien) {
+      if (!confirm("Changer le type de bien retire les photos déjà ajoutées. Continuer ?")) return;
+      setPhotos([]);
+    }
+    setTypeBien(t);
+  };
+
+  const photoPrete = (p: Photo) =>
+    isVide ? p.etat === "acceptee" || (p.etat === "choix" && !!p.choixCuisine) : p.etat === "prete";
+  const toutesPretes = photos.length > 0 && photos.every(photoPrete);
+  const enTraitement = photos.some((p) => p.etat === "envoi" || p.etat === "verification");
+  const depasseQuota = quota ? photos.length > quota.restantes : false;
 
   const handleSubmitProject = async () => {
     setMessage("");
-    if (!projectName.trim()) {
-      setMessage("Veuillez entrer un nom de projet.");
-      return;
-    }
-    if (files.length === 0) {
-      setMessage("Veuillez sélectionner au moins une photo.");
-      return;
-    }
+    if (!projectName.trim()) return setMessage("Veuillez entrer un nom de projet.");
+    if (!typeBien) return setMessage("Choisissez bien vide ou bien habité.");
+    if (!toutesPretes) return setMessage("Toutes les photos doivent être acceptées avant l'envoi.");
+    if (depasseQuota) return setMessage(`Il vous reste ${quota.restantes} photo(s) ce mois-ci.`);
 
     setSubmitting(true);
-    const token = localStorage.getItem("evidence_pro_token");
-
     try {
-      const photosPayload = await Promise.all(
-        files.map(async (file) => ({
-          imageBase64: await fileToBase64(file),
-          roomTypeId: roomType,
-          roomSize: "medium",
-        }))
-      );
-
       const res = await fetch(API_URL + "/api/pro/projects/create", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + token,
-        },
-        body: JSON.stringify({ projectName: projectName.trim(), photos: photosPayload }),
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token() },
+        body: JSON.stringify({
+          projectName: projectName.trim(),
+          typeBien,
+          photos: photos.map((p) => ({
+            url: p.url,
+            roomType: p.roomType,
+            verification: p.verification,
+            jeton: p.jeton,
+            choixCuisine: p.etat === "choix" ? p.choixCuisine : undefined,
+          })),
+        }),
       });
-
       const data = await res.json();
       if (!res.ok) {
         setMessage(data.error || "Erreur lors de la création du projet.");
-        setSubmitting(false);
-        return;
+      } else {
+        setMessage("Projet envoyé ! Vos visuels seront disponibles dans « Mes projets » après validation par notre équipe.");
+        setProjectName("");
+        setTypeBien("");
+        setPhotos([]);
+        fetchQuota();
       }
-
-      setMessage("Projet en cours de traitement ! Vous recevrez les résultats dans quelques minutes.");
-      setProjectName("");
-      setFiles([]);
-    } catch (err) {
+    } catch {
       setMessage("Erreur réseau.");
     }
     setSubmitting(false);
@@ -147,7 +282,9 @@ export default function RealEstateStagingDashboard() {
                 <p className="text-xs uppercase tracking-wide text-[#8c6b34]">
                   {account?.offerName || "Abonnement"}
                 </p>
-                <p className="text-lg font-semibold">{totalPhotos} photos incluses / mois</p>
+                <p className="text-lg font-semibold">
+                  {quota ? `${quota.restantes} / ${quota.total} photos restantes ce mois-ci` : `${totalPhotos} photos incluses / mois`}
+                </p>
               </div>
             </div>
           </div>
@@ -170,53 +307,147 @@ export default function RealEstateStagingDashboard() {
             </section>
 
             <section className="rounded-3xl border-2 border-dashed border-[#d8c5a2] bg-white p-10">
-              <h2 className="text-2xl font-semibold">
-                Nouveau projet
-              </h2>
+              <h2 className="text-2xl font-semibold">Nouveau projet</h2>
               <p className="mt-2 text-gray-600">
-                Créez un projet et déposez vos photos pour générer des projections immobilières.
+                Un projet = un bien. Une photo par pièce, prise de l'angle le plus large possible, en journée.
               </p>
 
-              <div className="mt-6 space-y-4 max-w-xl">
+              <div className="mt-6 max-w-2xl space-y-5">
                 <input
                   type="text"
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
-                  placeholder="Nom du projet (ex: Appartement Lyon)"
+                  placeholder="Nom du projet (ex : Appartement Lyon 6e)"
                   className="w-full rounded-2xl border border-[#e8dfd2] px-4 py-3 text-sm"
                 />
 
-                <select
-                  value={roomType}
-                  onChange={(e) => setRoomType(e.target.value)}
-                  className="w-full rounded-2xl border border-[#e8dfd2] px-4 py-3 text-sm"
-                >
-                  {ROOM_TYPES.map((r) => (
-                    <option key={r.id} value={r.id}>{r.label}</option>
-                  ))}
-                </select>
-
-                <div className="rounded-2xl bg-[#faf6ef] p-6">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={(e) => setFiles(Array.from(e.target.files || []))}
-                    className="block w-full text-sm"
-                  />
-                  {files.length > 0 && (
-                    <p className="mt-2 text-sm text-gray-600">{files.length} photo(s) sélectionnée(s)</p>
-                  )}
+                <div>
+                  <p className="mb-2 text-sm font-medium">Type de bien</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {(["vide", "habite"] as const).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => changerTypeBien(t)}
+                        className={
+                          "rounded-2xl border px-4 py-3 text-left text-sm " +
+                          (typeBien === t ? "border-[#b88a44] bg-[#fbf7f0]" : "border-[#e8dfd2] bg-white")
+                        }
+                      >
+                        <span className="font-medium">{t === "vide" ? "Bien vide" : "Bien habité"}</span>
+                        <span className="mt-1 block text-gray-500">
+                          {t === "vide" ? "Pièces vides à meubler et décorer" : "Pièces meublées à dépersonnaliser et valoriser"}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
+                {typeBien && (
+                  <div className="rounded-2xl bg-[#faf6ef] p-6">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => {
+                        ajouterPhotos(Array.from(e.target.files || []));
+                        e.target.value = "";
+                      }}
+                      className="block w-full text-sm"
+                    />
+                    {isVide && (
+                      <p className="mt-2 text-xs text-gray-500">
+                        Chaque photo est vérifiée à l'envoi : si elle ne permet pas un aménagement fiable, nous vous indiquons comment la reprendre.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {photos.map((p) => (
+                  <div key={p.id} className="rounded-2xl border border-[#efe6d8] bg-white p-4">
+                    <div className="flex items-center gap-4">
+                      <img src={p.apercu} alt="" className="h-20 w-20 rounded-xl object-cover" />
+                      <div className="flex-1">
+                        <select
+                          value={p.roomType}
+                          onChange={(e) => changerPiece(p, e.target.value)}
+                          className="w-full rounded-xl border border-[#e8dfd2] px-3 py-2 text-sm"
+                        >
+                          {roomTypes.map((r) => (
+                            <option key={r.id} value={r.id}>{r.label}</option>
+                          ))}
+                        </select>
+                        <p className="mt-2 text-xs text-gray-500">
+                          {p.etat === "envoi" && "Envoi..."}
+                          {p.etat === "verification" && "Vérification de la photo..."}
+                          {(p.etat === "acceptee" || p.etat === "prete") && <span className="text-green-700">Photo acceptée</span>}
+                          {p.etat === "choix" && <span className="text-[#8c6b34]">Choisissez le niveau ci-dessous</span>}
+                        </p>
+                      </div>
+                      <button onClick={() => retirer(p.id)} className="text-sm text-red-600">Retirer</button>
+                    </div>
+
+                    {p.etat === "refusee" && (
+                      <div className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">
+                        <p>{p.raison}</p>
+                        {p.conseil && <p className="mt-1">Conseil : {p.conseil}</p>}
+                        <p className="mt-1">Retirez cette photo et ajoutez-en une autre.</p>
+                      </div>
+                    )}
+
+                    {p.etat === "erreur" && (
+                      <div className="mt-3 flex items-center justify-between rounded-xl bg-red-50 p-3 text-sm text-red-700">
+                        <span>{p.raison}</span>
+                        <button onClick={() => reessayer(p)} className="underline">Réessayer</button>
+                      </div>
+                    )}
+
+                    {p.etat === "choix" && p.options && (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-sm font-medium">
+                          {p.roomType === "salle_bain" ? "Niveau de traitement de la salle de bain" : "Niveau de transformation de la cuisine"}
+                        </p>
+                        {p.options.map((o) => (
+                          <label
+                            key={o.id}
+                            className={
+                              "flex cursor-pointer gap-3 rounded-xl border p-3 text-sm " +
+                              (p.choixCuisine === o.id ? "border-[#b88a44] bg-[#fbf7f0]" : "border-[#efe6d8]")
+                            }
+                          >
+                            <input
+                              type="radio"
+                              name={`niveau-${p.id}`}
+                              checked={p.choixCuisine === o.id}
+                              onChange={() => majPhoto(p.id, { choixCuisine: o.id })}
+                              className="mt-1"
+                            />
+                            <span>
+                              <span className="font-medium">{o.label}</span>
+                              <span className="mt-1 block text-gray-500">{o.description}</span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {depasseQuota && (
+                  <p className="text-sm text-red-600">
+                    Il vous reste {quota.restantes} photo(s) ce mois-ci. Retirez des photos ou changez d'offre.
+                  </p>
+                )}
+                {photos.length > 0 && !toutesPretes && !enTraitement && (
+                  <p className="text-sm text-[#8c6b34]">Toutes les photos doivent être acceptées pour continuer.</p>
+                )}
                 {message && <p className="text-sm text-[#8c6b34]">{message}</p>}
 
                 <button
                   onClick={handleSubmitProject}
-                  disabled={submitting}
+                  disabled={submitting || !toutesPretes || enTraitement || depasseQuota || !projectName.trim()}
                   className="rounded-2xl bg-[#b88a44] px-6 py-4 font-medium text-white shadow-md transition hover:opacity-90 disabled:opacity-50"
                 >
-                  {submitting ? "Envoi en cours..." : "Lancer le traitement"}
+                  {submitting ? "Envoi en cours..." : `Envoyer le projet${photos.length ? ` (${photos.length} photo${photos.length > 1 ? "s" : ""})` : ""}`}
                 </button>
               </div>
             </section>
