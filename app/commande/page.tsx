@@ -423,7 +423,11 @@ export default function CommandePage() {
 
                     {p.etat === "choix" && p.options && (
                       <div className="mt-3 space-y-2">
-                        <p className="text-sm font-medium">Niveau de transformation de la cuisine</p>
+                        <p className="text-sm font-medium">
+                          {p.roomType === "salle_bain"
+                            ? "Niveau de traitement de la salle de bain"
+                            : "Niveau de transformation de la cuisine"}
+                        </p>
                         {p.options.map((o) => (
                           <label
                             key={o.id}
