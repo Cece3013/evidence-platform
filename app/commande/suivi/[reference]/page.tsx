@@ -138,7 +138,7 @@ export default function SuiviPage() {
                       <p className="text-xs text-gray-400 mb-2">Après</p>
                       <img src={photo.url} alt="Après" className="w-full rounded-2xl" />
                       
-                       <a href={photo.url}
+                       <a href={photo.url?.includes("/upload/") ? photo.url.replace("/upload/", "/upload/fl_attachment,f_jpg,q_90/") : photo.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="mt-3 inline-block rounded-xl border border-[#d8c5a2] px-5 py-2 text-sm transition hover:bg-[#f7f4ef]"
