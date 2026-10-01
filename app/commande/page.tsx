@@ -55,6 +55,20 @@ export default function CommandePage() {
     photosRef.current = photos;
   }, [photos]);
 
+  // Lien direct depuis l'application mobile : /commande?type=vide ou ?type=habite
+  // (et éventuellement &formule=...) → on saute la première étape (choix
+  // vide / habité) et la formule choisie dans l'application est présélectionnée.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const type = params.get("type");
+    if (type === "vide" || type === "habite") {
+      setPropertyType(type);
+      setStep(2);
+      const formule = params.get("formule");
+      if (formule) setFormulaId(formule);
+    }
+  }, []);
+
   useEffect(() => {
     fetch(API_URL + "/api/payments/formulas")
       .then((r) => r.json())
