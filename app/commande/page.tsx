@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 const API_URL = "https://poetic-youthfulness-production-fecb.up.railway.app";
 
 // Types de pièces = modules du pipeline V1 (identifiants identiques au backend)
+// « Entrée » retirée pour les particuliers le 01/10/2026 (reste disponible pour les PRO)
 const ROOM_TYPES = [
   { id: "salon", label: "Salon" },
   { id: "salon_salle_a_manger", label: "Salon / Salle à manger" },
@@ -14,7 +15,6 @@ const ROOM_TYPES = [
   { id: "chambre_enfant", label: "Chambre enfant" },
   { id: "chambre_ado", label: "Chambre ado" },
   { id: "balcon_terrasse", label: "Balcon / Terrasse" },
-  { id: "entree", label: "Entrée" },
 ];
 
 type EtatPhoto = "envoi" | "verification" | "acceptee" | "choix" | "refusee" | "erreur" | "prete";
