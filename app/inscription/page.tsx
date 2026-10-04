@@ -18,6 +18,7 @@ export default function InscriptionPage() {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [cgvAcceptee, setCgvAcceptee] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,6 +27,10 @@ export default function InscriptionPage() {
 
     if (!companyName.trim() || !siret.trim() || !email.trim() || !phone.trim() || !address.trim()) {
       setError("Merci de remplir tous les champs.");
+      return;
+    }
+    if (!cgvAcceptee) {
+      setError("Merci d'accepter les conditions générales de vente pour continuer.");
       return;
     }
 
@@ -46,6 +51,7 @@ export default function InscriptionPage() {
           address,
           offerId: offer.id,
           subscriptionDate: new Date().toISOString(),
+          cgvAcceptees: cgvAcceptee,
         }),
       });
 
@@ -151,9 +157,25 @@ export default function InscriptionPage() {
             />
           </div>
 
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[#efe6d8] bg-[#fdfaf5] p-4 text-sm leading-relaxed text-gray-700">
+            <input
+              type="checkbox"
+              checked={cgvAcceptee}
+              onChange={(e) => setCgvAcceptee(e.target.checked)}
+              className="mt-1 h-4 w-4 shrink-0 accent-[#b88a44]"
+            />
+            <span>
+              J&apos;ai lu et j&apos;accepte les{" "}
+              <a href="/cgv" target="_blank" rel="noopener noreferrer" className="text-[#8c6b34] underline">
+                conditions générales de vente
+              </a>
+              .
+            </span>
+          </label>
+
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !cgvAcceptee}
             className="w-full rounded-2xl bg-[#b88a44] px-6 py-4 text-sm font-medium text-white shadow-md transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? "Redirection vers le paiement..." : "Continuer vers le paiement"}
