@@ -46,6 +46,8 @@ export default function CommandePage() {
   const [selectedOptions, setSelectedOptions] = useState<Record<string, number>>({});
   const [client, setClient] = useState({ name: "", email: "", phone: "", address: "" });
   const [submitting, setSubmitting] = useState(false);
+  // Acceptation des CGV + renonciation au droit de rétractation (obligatoire)
+  const [cgvAcceptee, setCgvAcceptee] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [error, setError] = useState("");
   const compteur = useRef(0);
@@ -228,6 +230,10 @@ export default function CommandePage() {
       setError("Certaines photos ne sont pas encore prêtes. Revenez à l'étape Photos.");
       return;
     }
+    if (!cgvAcceptee) {
+      setError("Merci d'accepter les conditions générales de vente pour continuer.");
+      return;
+    }
     setSubmitting(true);
     setUploadProgress("Préparation du paiement...");
 
@@ -237,6 +243,7 @@ export default function CommandePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           formulaId,
+          cgvAcceptees: cgvAcceptee,
           options: Object.entries(selectedOptions).map(([id, quantity]) => ({ id, quantity })),
           clientEmail: client.email,
           metadata: {
@@ -593,9 +600,27 @@ export default function CommandePage() {
                 </div>
               </div>
 
+
+              <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[#efe6d8] bg-[#fdfaf5] p-4 text-sm leading-relaxed text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={cgvAcceptee}
+                  onChange={(e) => setCgvAcceptee(e.target.checked)}
+                  className="mt-1 h-4 w-4 shrink-0 accent-[#b88a44]"
+                />
+                <span>
+                  J&apos;ai lu et j&apos;accepte les{" "}
+                  <a href="/cgv" target="_blank" rel="noopener noreferrer" className="text-[#8c6b34] underline">
+                    conditions générales de vente
+                  </a>
+                  . Je demande l&apos;exécution immédiate de la prestation et je renonce expressément à mon
+                  droit de rétractation dès le début de celle-ci.
+                </span>
+              </label>
+
               <button
                 onClick={handlePay}
-                disabled={submitting}
+                disabled={submitting || !cgvAcceptee}
                 className="w-full rounded-2xl bg-[#b88a44] px-6 py-4 text-sm font-medium text-white shadow-md transition hover:opacity-90 disabled:opacity-50"
               >
                 {submitting ? (uploadProgress || "Traitement...") : "Payer " + total + "€"}
