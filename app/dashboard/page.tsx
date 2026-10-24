@@ -40,6 +40,22 @@ const ROOM_TYPES_HABITE = [
   { id: "jardin", label: "Jardin" },
 ];
 
+// Bien habité : choix de l'agent pour le salon et le salon / salle à manger (24/10/2026).
+// « Conserver » est présélectionné. La valeur est enregistrée comme le choix cuisine des biens vides.
+const PIECES_CHOIX_MOBILIER = ["salon", "salon_salle_a_manger"];
+const OPTIONS_MOBILIER = [
+  {
+    id: "valorisation_douce",
+    label: "Conserver le mobilier et la décoration",
+    description: "Idéal pour les biens de caractère ou anciens : on valorise l'existant.",
+  },
+  {
+    id: "projection_modernisee",
+    label: "Projection modernisée",
+    description: "Mobilier et décoration remplacés par un aménagement contemporain, pour aider les acheteurs à se projeter.",
+  },
+];
+
 type Etat = "envoi" | "verification" | "acceptee" | "choix" | "refusee" | "erreur" | "prete";
 
 type Photo = {
@@ -283,7 +299,12 @@ export default function RealEstateStagingDashboard() {
             roomType: p.roomType,
             verification: p.verification,
             jeton: p.jeton,
-            choixCuisine: p.etat === "choix" ? p.choixCuisine : undefined,
+            choixCuisine:
+              p.etat === "choix"
+                ? p.choixCuisine
+                : !isVide && PIECES_CHOIX_MOBILIER.includes(p.roomType)
+                ? p.choixCuisine || "valorisation_douce"
+                : undefined,
           })),
         }),
       });
@@ -454,6 +475,33 @@ export default function RealEstateStagingDashboard() {
                       <div className="mt-3 flex items-center justify-between rounded-xl bg-red-50 p-3 text-sm text-red-700">
                         <span>{p.raison}</span>
                         <button onClick={() => reessayer(p)} className="underline">Réessayer</button>
+                      </div>
+                    )}
+
+                    {!isVide && PIECES_CHOIX_MOBILIER.includes(p.roomType) && p.etat !== "erreur" && (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-sm font-medium">Mobilier et décoration</p>
+                        {OPTIONS_MOBILIER.map((o) => (
+                          <label
+                            key={o.id}
+                            className={
+                              "flex cursor-pointer gap-3 rounded-xl border p-3 text-sm " +
+                              ((p.choixCuisine || "valorisation_douce") === o.id ? "border-[#b88a44] bg-[#fbf7f0]" : "border-[#efe6d8]")
+                            }
+                          >
+                            <input
+                              type="radio"
+                              name={`mobilier-${p.id}`}
+                              checked={(p.choixCuisine || "valorisation_douce") === o.id}
+                              onChange={() => majPhoto(p.id, { choixCuisine: o.id })}
+                              className="mt-1"
+                            />
+                            <span>
+                              <span className="font-medium">{o.label}</span>
+                              <span className="mt-1 block text-gray-500">{o.description}</span>
+                            </span>
+                          </label>
+                        ))}
                       </div>
                     )}
 
