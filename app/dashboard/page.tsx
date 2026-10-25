@@ -42,7 +42,17 @@ const ROOM_TYPES_HABITE = [
 
 // Bien habité : choix de l'agent pour le salon et le salon / salle à manger (24/10/2026).
 // « Conserver » est présélectionné. La valeur est enregistrée comme le choix cuisine des biens vides.
-const PIECES_CHOIX_MOBILIER = ["salon", "salon_salle_a_manger"];
+// 24/10/2026 : étendu aux chambres (projection modernisée), à la cuisine et à la salle de bain
+// (projection rénovée, avec mention « Projection de rénovation – travaux non inclus » sur l'image).
+const PIECES_CHOIX_MOBILIER = [
+  "salon",
+  "salon_salle_a_manger",
+  "chambre_parentale",
+  "chambre_enfant",
+  "chambre_ado",
+  "cuisine",
+  "salle_bain",
+];
 const OPTIONS_MOBILIER = [
   {
     id: "valorisation_douce",
@@ -55,6 +65,30 @@ const OPTIONS_MOBILIER = [
     description: "Mobilier et décoration remplacés par un aménagement contemporain, pour aider les acheteurs à se projeter.",
   },
 ];
+const OPTIONS_RENOVATION: Record<string, { titre: string; options: { id: string; label: string; description: string }[] }> = {
+  cuisine: {
+    titre: "Cuisine",
+    options: [
+      { id: "valorisation_douce", label: "Conserver la cuisine actuelle", description: "On valorise la cuisine existante : désencombrement, décoration et lumière." },
+      {
+        id: "projection_modernisee",
+        label: "Projection rénovée",
+        description: "Montrer à quoi pourrait ressembler la cuisine refaite, à implantation identique. La mention « Projection de rénovation – travaux non inclus » figure sur l'image.",
+      },
+    ],
+  },
+  salle_bain: {
+    titre: "Salle de bain",
+    options: [
+      { id: "valorisation_douce", label: "Conserver la salle de bain actuelle", description: "On valorise la salle de bain existante : désencombrement, décoration et lumière." },
+      {
+        id: "projection_modernisee",
+        label: "Projection rénovée",
+        description: "Montrer à quoi pourrait ressembler la salle de bain refaite, à implantation identique. La mention « Projection de rénovation – travaux non inclus » figure sur l'image.",
+      },
+    ],
+  },
+};
 
 type Etat = "envoi" | "verification" | "acceptee" | "choix" | "refusee" | "erreur" | "prete";
 
@@ -480,8 +514,8 @@ export default function RealEstateStagingDashboard() {
 
                     {!isVide && PIECES_CHOIX_MOBILIER.includes(p.roomType) && p.etat !== "erreur" && (
                       <div className="mt-3 space-y-2">
-                        <p className="text-sm font-medium">Mobilier et décoration</p>
-                        {OPTIONS_MOBILIER.map((o) => (
+                        <p className="text-sm font-medium">{OPTIONS_RENOVATION[p.roomType]?.titre || "Mobilier et décoration"}</p>
+                        {(OPTIONS_RENOVATION[p.roomType]?.options || OPTIONS_MOBILIER).map((o) => (
                           <label
                             key={o.id}
                             className={
